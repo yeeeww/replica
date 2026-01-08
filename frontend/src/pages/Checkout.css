@@ -1,0 +1,126 @@
+.checkout-page {
+  padding: 40px 0;
+  min-height: 60vh;
+}
+
+.checkout-page h1 {
+  font-size: 32px;
+  font-weight: 600;
+  margin-bottom: 32px;
+}
+
+.checkout-content {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 40px;
+}
+
+.checkout-form {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.checkout-section {
+  background-color: white;
+  padding: 32px;
+  border: 1px solid var(--border-color);
+}
+
+.checkout-section h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+
+.checkout-summary {
+  background-color: #f9f9f9;
+  padding: 32px;
+  height: fit-content;
+  position: sticky;
+  top: 100px;
+}
+
+.checkout-summary h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+
+.checkout-items {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.checkout-item {
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.checkout-item img {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  background-color: #f5f5f5;
+}
+
+.checkout-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.checkout-item-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.checkout-item-quantity {
+  font-size: 13px;
+  color: var(--secondary-color);
+}
+
+.checkout-item-price {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.checkout-summary-total {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.checkout-summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 15px;
+}
+
+.checkout-summary-final {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: 2px solid var(--border-color);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+@media (max-width: 1024px) {
+  .checkout-content {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-summary {
+    position: static;
+    order: -1;
+  }
+}
+

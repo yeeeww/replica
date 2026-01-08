@@ -1,0 +1,470 @@
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { getProducts } from "../services/api";
+import "./Home.css";
+
+const Home = () => {
+	const [products, setProducts] = useState([]);
+	const [loading, setLoading] = useState(true);
+	const [currentSlide, setCurrentSlide] = useState(0);
+	const [newVisibleCount, setNewVisibleCount] = useState(4);
+	const [hitSlideIndex, setHitSlideIndex] = useState(0);
+	const [popularLoading, setPopularLoading] = useState(false);
+	const [popularItems, setPopularItems] = useState({});
+
+	const bannerSlides = [
+		{
+			id: 1,
+			image: "https://jpound2024.cafe24.com/images/slider/main/1_2.webp",
+			title: "하이엔드 상품 할인",
+			subtitle: "UP TO 50% OFF",
+			description: "오후 4시 이전 주문 건 당일 발송",
+			buttonText: "지금 쇼핑하기",
+			buttonLink: "/products",
+		},
+		{
+			id: 2,
+			image:
+				"https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1600&h=600&fit=crop",
+			title: "NEW ARRIVALS",
+			subtitle: "2024 신상품",
+			description: "최신 트렌드를 만나보세요",
+			buttonText: "신상품 보기",
+			buttonLink: "/products?category=new",
+		},
+		{
+			id: 3,
+			image:
+				"https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=1600&h=600&fit=crop",
+			title: "LUXURY COLLECTION",
+			subtitle: "프리미엄 컬렉션",
+			description: "엄선된 명품 브랜드",
+			buttonText: "컬렉션 보기",
+			buttonLink: "/products?category=luxury",
+		},
+		{
+			id: 4,
+			image:
+				"https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=1600&h=600&fit=crop",
+			title: "WATCH COLLECTION",
+			subtitle: "시계 특가전",
+			description: "최대 40% 할인",
+			buttonText: "시계 보기",
+			buttonLink: "/products?category=watch",
+		},
+	];
+
+	useEffect(() => {
+		fetchFeaturedProducts();
+	}, []);
+
+	useEffect(() => {
+		const timer = setInterval(() => {
+			setCurrentSlide((prev) => (prev + 1) % bannerSlides.length);
+		}, 5000);
+
+		return () => clearInterval(timer);
+	}, [bannerSlides.length]);
+
+	const fetchFeaturedProducts = async () => {
+		try {
+			const response = await getProducts({ limit: 20 });
+			setProducts(response.data.products);
+		} catch (error) {
+			console.error("Failed to fetch products:", error);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const nextSlide = () => {
+		setCurrentSlide((prev) => (prev + 1) % bannerSlides.length);
+	};
+
+	const prevSlide = () => {
+		setCurrentSlide(
+			(prev) => (prev - 1 + bannerSlides.length) % bannerSlides.length
+		);
+	};
+
+	const goToSlide = (index) => {
+		setCurrentSlide(index);
+	};
+
+	const categoryCards = [
+		{
+			slug: "men",
+			title: "MEN",
+			subtitle: "하이엔드 남성관",
+			image:
+				"https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?auto=format&fit=crop&w=1400&q=80",
+		},
+		{
+			slug: "women",
+			title: "WOMEN",
+			subtitle: "하이엔드 여성관",
+			image:
+				"https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1400&q=80",
+		},
+		{
+			slug: "domestic",
+			title: "국내출고상품",
+			subtitle: "국내 출고 명품",
+			image:
+				"https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=1400&q=80",
+		},
+		{
+			slug: "recommend",
+			title: "추천상품",
+			subtitle: "추천 상품",
+			image:
+				"https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1400&q=80",
+		},
+		{
+			slug: "hot",
+			title: "히트상품",
+			subtitle: "히트 상품",
+			image:
+				"https://images.unsplash.com/photo-1524592094714-0f0654e20314?auto=format&fit=crop&w=1400&q=80",
+		},
+		{
+			slug: "popular",
+			title: "인기상품",
+			subtitle: "인기 상품",
+			image:
+				"https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1400&q=80",
+		},
+	];
+
+	const popularSections = [
+		{
+			slug: "bags",
+			title: "BEST Bags Collection",
+			subtitle: "베스트 가방 모아보기",
+			banner:
+				"https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1800&q=80",
+		},
+		{
+			slug: "clothing",
+			title: "BEST Clothing Collection",
+			subtitle: "베스트 의류 모아보기",
+			banner:
+				"https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=1800&q=80",
+		},
+		{
+			slug: "shoes",
+			title: "BEST Shoes Collection",
+			subtitle: "베스트 신발 모아보기",
+			banner:
+				"https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=1800&q=80",
+		},
+		{
+			slug: "acc",
+			title: "BEST ACC Collection",
+			subtitle: "베스트 액세서리 모아보기",
+			banner:
+				"https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=1800&q=80",
+		},
+	];
+
+	const handleLoadMoreNew = () => {
+		setNewVisibleCount((prev) => Math.min(prev + 4, products.length));
+	};
+
+	const visibleNewItems = products.slice(0, newVisibleCount);
+	const hitProducts = products.slice(0, 15);
+	const hitSlides = [];
+	for (let i = 0; i < hitProducts.length; i += 5) {
+		hitSlides.push(hitProducts.slice(i, i + 5));
+	}
+
+	const nextHitSlide = () => {
+		if (hitSlides.length === 0) return;
+		setHitSlideIndex((prev) => (prev + 1) % hitSlides.length);
+	};
+
+	const prevHitSlide = () => {
+		if (hitSlides.length === 0) return;
+		setHitSlideIndex(
+			(prev) => (prev - 1 + hitSlides.length) % hitSlides.length
+		);
+	};
+
+	useEffect(() => {
+		if (hitSlides.length === 0) return;
+		const timer = setInterval(() => {
+			setHitSlideIndex((prev) => (prev + 1) % hitSlides.length);
+		}, 4000);
+		return () => clearInterval(timer);
+	}, [hitSlides.length]);
+
+	useEffect(() => {
+		const fetchPopular = async () => {
+			try {
+				setPopularLoading(true);
+				const results = await Promise.all(
+					popularSections.map(async (section) => {
+						const res = await getProducts({ category: section.slug, limit: 4 });
+						return { slug: section.slug, items: res.data.products || [] };
+					})
+				);
+				const map = {};
+				results.forEach((r) => {
+					map[r.slug] = r.items;
+				});
+				setPopularItems(map);
+			} catch (error) {
+				console.error("Failed to fetch popular products:", error);
+			} finally {
+				setPopularLoading(false);
+			}
+		};
+
+		fetchPopular();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
+
+	return (
+		<div className="home">
+			{/* 이미지 슬라이드 배너 */}
+			<section className="hero-slider">
+				<div className="slider-container">
+					{bannerSlides.map((slide, index) => (
+						<div
+							key={slide.id}
+							className={`slide ${index === currentSlide ? "active" : ""}`}
+							style={{ backgroundImage: `url(${slide.image})` }}>
+							<div className="slide-overlay"></div>
+							<div className="container">
+								<div className="slide-content">
+									<p className="slide-subtitle">{slide.subtitle}</p>
+									<h1 className="slide-title">{slide.title}</h1>
+									<p className="slide-description">{slide.description}</p>
+									<Link to={slide.buttonLink} className="slide-button">
+										{slide.buttonText}
+									</Link>
+								</div>
+							</div>
+						</div>
+					))}
+				</div>
+
+				{/* 슬라이드 컨트롤 */}
+				<button className="slider-btn prev" onClick={prevSlide}>
+					‹
+				</button>
+				<button className="slider-btn next" onClick={nextSlide}>
+					›
+				</button>
+
+				{/* 슬라이드 인디케이터 */}
+				<div className="slider-indicators">
+					{bannerSlides.map((_, index) => (
+						<button
+							key={index}
+							className={`indicator ${index === currentSlide ? "active" : ""}`}
+							onClick={() => goToSlide(index)}
+						/>
+					))}
+				</div>
+			</section>
+
+			{/* 카테고리 아이콘 섹션 */}
+			<section className="category-icons">
+				<div className="container">
+					<div className="category-grid">
+						{categoryCards.map((card) => (
+							<Link
+								key={card.slug}
+								to={`/products?category=${card.slug}`}
+								className="category-icon-card">
+								<div
+									className="category-icon-img"
+									style={{ backgroundImage: `url(${card.image})` }}>
+									<span className="category-icon-text">{card.title}</span>
+								</div>
+								<p>{card.subtitle}</p>
+							</Link>
+						))}
+					</div>
+				</div>
+			</section>
+
+			{/* NEW ITEM 섹션 */}
+			<section className="new-items">
+				<div className="container">
+					<div className="section-header-simple">
+						<h2>NEW ITEM - 신상 제품</h2>
+					</div>
+					{loading ? (
+						<div className="loading">상품을 불러오는 중...</div>
+					) : (
+						<>
+							<div className="new-grid">
+								{visibleNewItems.map((product) => (
+									<div key={product.id} className="new-card">
+										<Link to={`/products/${product.id}`}>
+											<div className="new-card-image">
+												<img
+													src={product.image_url}
+													alt={product.name}
+													onError={(e) => {
+														e.target.style.visibility = "hidden";
+													}}
+												/>
+											</div>
+											<div className="new-card-info">
+												<p className="new-card-name">{product.name}</p>
+												<p className="new-card-price">
+													{product.price?.toLocaleString()}원
+												</p>
+											</div>
+										</Link>
+									</div>
+								))}
+							</div>
+							{products.length > newVisibleCount && (
+								<div className="section-more">
+									<button className="btn-load-more" onClick={handleLoadMoreNew}>
+										더보기
+									</button>
+								</div>
+							)}
+						</>
+					)}
+				</div>
+			</section>
+
+			{/* HIT PRODUCTS 섹션 */}
+			<section className="celeb-picks">
+				<div className="container">
+					<div className="section-header-simple">
+						<h2>
+							<Link to="/products?category=hot" className="section-link">
+								HIT PRODUCTS
+							</Link>
+						</h2>
+					</div>
+					{loading ? (
+						<div className="loading">상품을 불러오는 중...</div>
+					) : (
+						<div className="celeb-carousel">
+							{hitSlides.length === 0 ? (
+								<div className="loading">상품이 없습니다.</div>
+							) : (
+								<div className="hit-slider-wrapper">
+									<button className="hit-nav-btn prev" onClick={prevHitSlide}>
+										‹
+									</button>
+									<div
+										className="celeb-grid"
+										style={{
+											transform: `translateX(-${hitSlideIndex * 100}%)`,
+										}}>
+										{hitSlides.map((group, slideIdx) => (
+											<div key={slideIdx} className="celeb-slide">
+												{group.map((product) => (
+													<div key={product.id} className="celeb-card">
+														<Link to={`/products/${product.id}`}>
+															<div className="celeb-image">
+																<img
+																	src={product.image_url}
+																	alt={product.name}
+																/>
+															</div>
+															<div className="celeb-info">
+																<p className="celeb-product-name">
+																	{product.name}
+																</p>
+																<p className="celeb-price">
+																	{product.price?.toLocaleString()}원
+																</p>
+															</div>
+														</Link>
+													</div>
+												))}
+											</div>
+										))}
+									</div>
+									<button className="hit-nav-btn next" onClick={nextHitSlide}>
+										›
+									</button>
+								</div>
+							)}
+						</div>
+					)}
+				</div>
+			</section>
+
+			{/* 인기 카테고리별 BEST 섹션 */}
+			{popularSections.map((section) => {
+				const items = popularItems[section.slug] || [];
+				return (
+					<section className="popular-section" key={section.slug}>
+						<div
+							className="popular-hero"
+							style={{ backgroundImage: `url(${section.banner})` }}>
+							<div className="popular-hero-content">
+								<p className="popular-subtitle">{section.subtitle}</p>
+								<h3 className="popular-title">{section.title}</h3>
+								<Link
+									to={`/products?category=${section.slug}`}
+									className="popular-hero-btn">
+									MORE
+								</Link>
+							</div>
+						</div>
+						<div className="container">
+							<div className="popular-body">
+								<div className="popular-head">
+									<h4>{section.title}</h4>
+									<p>{section.subtitle}</p>
+								</div>
+								{popularLoading ? (
+									<div className="loading">상품을 불러오는 중...</div>
+								) : (
+									<>
+										<div className="popular-grid">
+											{items.slice(0, 4).map((product) => (
+												<div key={product.id} className="popular-card">
+													<Link to={`/products/${product.id}`}>
+														<div className="popular-card-image">
+															<img
+																src={product.image_url}
+																alt={product.name}
+																onError={(e) => {
+																	e.target.style.visibility = "hidden";
+																}}
+															/>
+														</div>
+														<div className="popular-card-info">
+															<p className="popular-card-name">
+																{product.name}
+															</p>
+															<p className="popular-card-price">
+																{product.price?.toLocaleString()}원
+															</p>
+														</div>
+													</Link>
+												</div>
+											))}
+										</div>
+										<div className="section-more">
+											<Link
+												to={`/products?category=${section.slug}`}
+												className="btn-load-more">
+												더보기
+											</Link>
+										</div>
+									</>
+								)}
+							</div>
+						</div>
+					</section>
+				);
+			})}
+		</div>
+	);
+};
+
+export default Home;
