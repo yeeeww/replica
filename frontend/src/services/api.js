@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "/api";
+const API_BASE_URL = "/api";
 // Products
 export const getProducts = (params) => {
 	return axios.get(`${API_BASE_URL}/products`, { params });
