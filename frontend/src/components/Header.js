@@ -9,6 +9,8 @@ const Header = () => {
   const { itemCount } = useCart();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [openSubmenu, setOpenSubmenu] = useState(null);
 
   const handleLogout = () => {
     logout();
@@ -78,19 +80,79 @@ const Header = () => {
     { label: '공지사항', slug: 'notice', isNotice: true },
   ];
 
+  const toggleSubmenu = (slug) => {
+    setOpenSubmenu(openSubmenu === slug ? null : slug);
+  };
+
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+    setOpenSubmenu(null);
+  };
+
   return (
     <header className="header">
-      {/* 상단 유틸리티 바 */}
-      <div className="header-top">
+      {/* 모바일 헤더 */}
+      <div className="mobile-header">
+        <div className="mobile-header-top">
+          <button 
+            className="mobile-menu-btn"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            <span className={`hamburger ${mobileMenuOpen ? 'open' : ''}`}>
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+          </button>
+          <Link to="/" className="mobile-logo">
+            <span className="logo-text">WIZNOBLE</span>
+            <span className="logo-text-mirror">ELBONZIW</span>
+          </Link>
+          <button className="mobile-search-btn">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+          </button>
+        </div>
+        <div className="mobile-header-bottom">
+          {user ? (
+            <>
+              <span className="mobile-user-name">{user.name || user.email}</span>
+              <Link to="/orders">주문내역</Link>
+              <button className="mobile-logout-btn" onClick={handleLogout}>로그아웃</button>
+            </>
+          ) : (
+            <>
+              <Link to="/login">로그인</Link>
+              <Link to="/register">회원가입</Link>
+            </>
+          )}
+          <Link to="/cart" className="mobile-cart-link">
+            장바구니
+            {itemCount > 0 && <span className="cart-badge">{itemCount}</span>}
+          </Link>
+        </div>
+      </div>
+
+      {/* 데스크탑 상단 유틸리티 바 */}
+      <div className="header-top desktop-header">
         <div className="container">
           <div className="header-top-content">
-            <div className="points-info">+5,000 P</div>
+            <div className="header-top-left">
+              {/* 빈 공간 */}
+            </div>
             <div className="header-top-right">
-              <button className="icon-btn">🔍</button>
+              <span className="points-badge">+5,000 P</span>
+              <button className="icon-btn search-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
+              </button>
               {user ? (
                 <>
-                  <span className="welcome-text">{user.name || user.email}</span>
-                  <Link to="/orders" className="link-btn">주문내역</Link>
+                  <Link to="/orders">주문내역</Link>
                   <button className="link-btn" onClick={handleLogout}>로그아웃</button>
                 </>
               ) : (
@@ -108,8 +170,8 @@ const Header = () => {
         </div>
       </div>
 
-      {/* 로고 영역 */}
-      <div className="header-logo">
+      {/* 데스크탑 로고 영역 */}
+      <div className="header-logo desktop-header">
         <div className="container">
           <Link to="/" className="logo">
             <span className="logo-text">WIZNOBLE</span>
@@ -118,8 +180,8 @@ const Header = () => {
         </div>
       </div>
 
-      {/* 메인 네비게이션 */}
-      <div className="header-nav">
+      {/* 데스크탑 메인 네비게이션 */}
+      <div className="header-nav desktop-nav">
         <div className="container">
           <nav className="main-nav">
             {menuConfig.map((item) => (
@@ -152,6 +214,66 @@ const Header = () => {
             )}
           </nav>
         </div>
+      </div>
+
+      {/* 모바일 사이드 메뉴 */}
+      <div className={`mobile-menu-overlay ${mobileMenuOpen ? 'open' : ''}`} onClick={closeMobileMenu}></div>
+      <div className={`mobile-menu ${mobileMenuOpen ? 'open' : ''}`}>
+        <div className="mobile-menu-header">
+          <span className="mobile-menu-title">메뉴</span>
+          <button className="mobile-menu-close" onClick={closeMobileMenu}>✕</button>
+        </div>
+        <nav className="mobile-nav">
+          {menuConfig.map((item) => (
+            <div className="mobile-nav-item" key={item.slug}>
+              {item.children ? (
+                <>
+                  <button 
+                    className={`mobile-nav-link has-children ${openSubmenu === item.slug ? 'open' : ''}`}
+                    onClick={() => toggleSubmenu(item.slug)}
+                  >
+                    {item.label}
+                    <span className="mobile-arrow">{openSubmenu === item.slug ? '−' : '+'}</span>
+                  </button>
+                  <div className={`mobile-submenu ${openSubmenu === item.slug ? 'open' : ''}`}>
+                    <Link 
+                      to={`/products?category=${item.slug}`} 
+                      className="mobile-submenu-link"
+                      onClick={closeMobileMenu}
+                    >
+                      전체보기
+                    </Link>
+                    {item.children.map((child) => (
+                      <Link
+                        key={child.slug}
+                        to={`/products?category=${child.slug}`}
+                        className="mobile-submenu-link"
+                        onClick={closeMobileMenu}
+                      >
+                        {child.label}
+                      </Link>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <Link 
+                  to={item.isNotice ? '/notices' : `/products?category=${item.slug}`}
+                  className="mobile-nav-link"
+                  onClick={closeMobileMenu}
+                >
+                  {item.label}
+                </Link>
+              )}
+            </div>
+          ))}
+          {isAdmin && (
+            <div className="mobile-nav-item">
+              <Link to="/admin" className="mobile-nav-link" onClick={closeMobileMenu}>
+                관리자
+              </Link>
+            </div>
+          )}
+        </nav>
       </div>
 
       {/* 검색 오버레이 (숨김 상태) */}

@@ -11,23 +11,37 @@ const Home = () => {
 	const [hitSlideIndex, setHitSlideIndex] = useState(0);
 	const [popularLoading, setPopularLoading] = useState(false);
 	const [popularItems, setPopularItems] = useState({});
+	const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+	// 화면 크기 감지
+	useEffect(() => {
+		const handleResize = () => {
+			setIsMobile(window.innerWidth <= 768);
+		};
+		window.addEventListener("resize", handleResize);
+		return () => window.removeEventListener("resize", handleResize);
+	}, []);
 
 	const bannerSlides = [
 		{
 			id: 1,
 			image: "https://jpound2024.cafe24.com/images/slider/main/1_2.webp",
+			mobileImage: "https://jpound2024.cafe24.com/images/slider/main/1_2_m.webp",
 		},
 		{
 			id: 2,
 			image: "https://jpound2024.cafe24.com/images/slider/main/7_4.webp",
+			mobileImage: "https://jpound2024.cafe24.com/images/slider/main/7_4_m.webp",
 		},
 		{
 			id: 3,
 			image: "https://jpound2024.cafe24.com/images/slider/main/1_898.jpg",
+			mobileImage: "https://jpound2024.cafe24.com/images/slider/main/1_898_m.jpg",
 		},
 		{
 			id: 4,
 			image: "https://jpound2024.cafe24.com/images/slider/main/1_1.webp",
+			mobileImage: "https://jpound2024.cafe24.com/images/slider/main/1_88_m.webp",
 		},
 	];
 
@@ -111,29 +125,29 @@ const Home = () => {
 			slug: "bags",
 			title: "BEST Bags Collection",
 			subtitle: "베스트 가방 모아보기",
-			banner:
-				"https://jpound2024.cafe24.com/images/slider/main/9_9.webp"
+			banner: "https://jpound2024.cafe24.com/images/slider/main/9_9.webp",
+			mobileBanner: "https://jpound2024.cafe24.com/images/slider/main/9_9_m.webp"
 		},
 		{
 			slug: "clothing",
 			title: "BEST Clothing Collection",
 			subtitle: "베스트 의류 모아보기",
-			banner:
-				"https://jpound2024.cafe24.com/images/slider/main/2_3.webp",
+			banner: "https://jpound2024.cafe24.com/images/slider/main/2_3.webp",
+			mobileBanner: "https://jpound2024.cafe24.com/images/slider/main/2_3_m.webp"
 		},
 		{
 			slug: "shoes",
 			title: "BEST Shoes Collection",
 			subtitle: "베스트 신발 모아보기",
-			banner:
-				"https://jpound2024.cafe24.com/images/slider/main/5_4.webp"
+			banner: "https://jpound2024.cafe24.com/images/slider/main/5_4.webp",
+			mobileBanner: "https://jpound2024.cafe24.com/images/slider/main/5_5.webp"
 		},
 		{
 			slug: "acc",
 			title: "BEST ACC Collection",
 			subtitle: "베스트 액세서리 모아보기",
-			banner:
-				"https://jpound2024.cafe24.com/images/slider/main/4_1.webp"
+			banner: "https://jpound2024.cafe24.com/images/slider/main/4_1.webp",
+			mobileBanner: "https://jpound2024.cafe24.com/images/slider/main/4_1.webp"
 		},
 	];
 
@@ -203,7 +217,7 @@ const Home = () => {
 						<div
 							key={slide.id}
 							className={`slide ${index === currentSlide ? "active" : ""}`}
-							style={{ backgroundImage: `url(${slide.image})` }}>
+							style={{ backgroundImage: `url(${isMobile ? slide.mobileImage : slide.image})` }}>
 						</div>
 					))}
 				</div>
@@ -358,21 +372,14 @@ const Home = () => {
 			{/* 인기 카테고리별 BEST 섹션 */}
 			{popularSections.map((section) => {
 				const items = popularItems[section.slug] || [];
+				const bannerUrl = isMobile ? section.mobileBanner : section.banner;
 				return (
 					<section className="popular-section" key={section.slug}>
-						<div
+						<Link
+							to={`/products?category=${section.slug}`}
 							className="popular-hero"
-							style={{ backgroundImage: `url(${section.banner})` }}>
-							<div className="popular-hero-content">
-								<p className="popular-subtitle">{section.subtitle}</p>
-								<h3 className="popular-title">{section.title}</h3>
-								<Link
-									to={`/products?category=${section.slug}`}
-									className="popular-hero-btn">
-									MORE
-								</Link>
-							</div>
-						</div>
+							style={{ backgroundImage: `url(${bannerUrl})` }}>
+						</Link>
 						<div className="container">
 							<div className="popular-body">
 								<div className="popular-head">

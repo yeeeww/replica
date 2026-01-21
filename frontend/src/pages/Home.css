@@ -26,6 +26,10 @@
 	align-items: center;
 }
 
+.slide img {
+	display: none;
+}
+
 .slide.active {
 	opacity: 1;
 	z-index: 1;
@@ -698,7 +702,14 @@
 
 @media (max-width: 768px) {
 	.hero-slider {
-		height: 400px;
+		height: auto;
+		aspect-ratio: 9/16;
+		max-height: 60vh;
+	}
+
+	.slide {
+		background-size: cover;
+		background-position: center;
 	}
 
 	.slide-title {
@@ -790,7 +801,14 @@
 
 @media (max-width: 480px) {
 	.hero-slider {
-		height: 350px;
+		height: auto;
+		aspect-ratio: 9/16;
+		max-height: 70vh;
+	}
+
+	.slide {
+		background-size: cover;
+		background-position: center;
 	}
 
 	.slide-title {
@@ -826,7 +844,7 @@
 	}
 
 	.category-grid {
-		grid-template-columns: 1fr;
+		grid-template-columns: repeat(2, 1fr);
 	}
 
 	.service-grid {
@@ -862,5 +880,174 @@
 
 	.section-header h2 {
 		font-size: 24px;
+	}
+
+	/* 모바일 가로 스크롤 슬라이드 */
+	.new-items {
+		padding: 40px 0;
+	}
+
+	.new-items .container {
+		padding: 0;
+	}
+
+	.new-items .section-header-simple {
+		padding: 0 16px;
+		margin-bottom: 20px;
+	}
+
+	.new-grid {
+		display: flex;
+		overflow-x: auto;
+		scroll-snap-type: x mandatory;
+		-webkit-overflow-scrolling: touch;
+		gap: 12px;
+		padding: 0 16px;
+		scrollbar-width: none;
+	}
+
+	.new-grid::-webkit-scrollbar {
+		display: none;
+	}
+
+	.new-card {
+		flex: 0 0 45%;
+		min-width: 45%;
+		scroll-snap-align: start;
+		padding: 0;
+	}
+
+	.new-card-image {
+		min-height: 180px;
+	}
+
+	.new-card-image img {
+		height: 180px;
+	}
+
+	.new-card-name {
+		font-size: 13px;
+		min-height: auto;
+	}
+
+	.new-card-price {
+		font-size: 14px;
+	}
+
+	/* HIT PRODUCTS 모바일 */
+	.celeb-picks {
+		padding: 40px 0;
+	}
+
+	.celeb-picks .container {
+		padding: 0;
+	}
+
+	.celeb-picks .section-header-simple {
+		padding: 0 16px;
+	}
+
+	.hit-slider-wrapper {
+		position: relative;
+	}
+
+	.celeb-carousel {
+		overflow: visible;
+	}
+
+	.celeb-grid {
+		display: flex !important;
+		overflow-x: auto;
+		scroll-snap-type: x mandatory;
+		-webkit-overflow-scrolling: touch;
+		transform: none !important;
+		padding: 0 16px;
+		gap: 12px;
+		scrollbar-width: none;
+	}
+
+	.celeb-grid::-webkit-scrollbar {
+		display: none;
+	}
+
+	.celeb-slide {
+		display: contents;
+	}
+
+	.celeb-card {
+		flex: 0 0 45%;
+		min-width: 45%;
+		scroll-snap-align: start;
+	}
+
+	.hit-nav-btn {
+		display: none;
+	}
+
+	.hit-indicators {
+		display: none;
+	}
+
+	/* Popular 섹션 모바일 */
+	.popular-section {
+		margin: 40px 0;
+	}
+
+	.popular-hero {
+		min-height: 250px;
+	}
+
+	.popular-body {
+		padding: 20px 0 0;
+	}
+
+	.popular-body .container,
+	.popular-section .container {
+		padding: 0;
+	}
+
+	.popular-head {
+		padding: 0 16px;
+	}
+
+	.popular-grid {
+		display: flex;
+		overflow-x: auto;
+		scroll-snap-type: x mandatory;
+		-webkit-overflow-scrolling: touch;
+		gap: 12px;
+		padding: 0 16px;
+		scrollbar-width: none;
+	}
+
+	.popular-grid::-webkit-scrollbar {
+		display: none;
+	}
+
+	.popular-card {
+		flex: 0 0 45%;
+		min-width: 45%;
+		scroll-snap-align: start;
+	}
+
+	.popular-card-image {
+		min-height: 160px;
+	}
+
+	.popular-card-image img {
+		height: 160px;
+	}
+
+	.popular-card-name {
+		font-size: 13px;
+	}
+
+	.popular-card-price {
+		font-size: 14px;
+	}
+
+	.section-more {
+		margin-top: 24px;
+		padding: 0 16px;
 	}
 }
