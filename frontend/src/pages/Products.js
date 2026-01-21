@@ -19,25 +19,24 @@ const Products = () => {
 	const search = searchParams.get("search") || "";
 	const page = parseInt(searchParams.get("page") || "1");
 
-	const mainCategoryMap = {
-		bags: "bags",
-		clothing: "clothing",
-		shoes: "shoes",
-		acc: "acc",
-		men: "men",
-		women: "women",
-		domestic: "domestic",
-		recommend: "recommend",
-		hot: "hot",
-		popular: "popular",
-		notice: "notice",
-	};
-
 	const deriveMain = useMemo(() => {
+		const mainCategoryMap = {
+			bags: "bags",
+			clothing: "clothing",
+			shoes: "shoes",
+			acc: "acc",
+			men: "men",
+			women: "women",
+			domestic: "domestic",
+			recommend: "recommend",
+			hot: "hot",
+			popular: "popular",
+			notice: "notice",
+		};
 		if (!category) return "men";
 		const base = category.split("-")[0];
 		return mainCategoryMap[base] || base || "men";
-	}, [category, mainCategoryMap]);
+	}, [category]);
 
 	const bannerByMain = {
 		bags:
