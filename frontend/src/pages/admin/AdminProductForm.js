@@ -15,6 +15,7 @@ const AdminProductForm = () => {
     category_id: '',
     image_url: '',
     stock: '',
+    department_price: '',
     is_active: true
   });
   const [loading, setLoading] = useState(false);
@@ -47,6 +48,7 @@ const AdminProductForm = () => {
         category_id: product.category_id || '',
         image_url: product.image_url || '',
         stock: product.stock,
+        department_price: product.department_price || '',
         is_active: product.is_active
       });
     } catch (error) {
@@ -73,7 +75,8 @@ const AdminProductForm = () => {
         ...formData,
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock),
-        category_id: formData.category_id ? parseInt(formData.category_id) : null
+        category_id: formData.category_id ? parseInt(formData.category_id) : null,
+        department_price: formData.department_price ? parseFloat(formData.department_price) : null
       };
 
       if (isEdit) {
@@ -136,6 +139,20 @@ const AdminProductForm = () => {
               min="0"
               step="0.01"
               required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="department_price">백화점가 (선택)</label>
+            <input
+              type="number"
+              id="department_price"
+              name="department_price"
+              value={formData.department_price}
+              onChange={handleChange}
+              min="0"
+              step="0.01"
+              placeholder="입력 시 쇼핑몰에 노출됩니다."
             />
           </div>
 

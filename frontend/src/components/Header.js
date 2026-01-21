@@ -87,8 +87,17 @@ const Header = () => {
             <div className="points-info">+5,000 P</div>
             <div className="header-top-right">
               <button className="icon-btn">🔍</button>
-              <Link to="/login">로그인</Link>
-              <Link to="/register">회원가입</Link>
+              {user ? (
+                <>
+                  <span className="welcome-text">{user.name || user.email}</span>
+                  <button className="link-btn" onClick={handleLogout}>로그아웃</button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login">로그인</Link>
+                  <Link to="/register">회원가입</Link>
+                </>
+              )}
               <Link to="/cart" className="cart-link">
                 장바구니
                 {itemCount > 0 && <span className="cart-badge">{itemCount}</span>}
@@ -102,8 +111,8 @@ const Header = () => {
       <div className="header-logo">
         <div className="container">
           <Link to="/" className="logo">
-            <span className="logo-text">RIXX</span>
-            <span className="logo-text-mirror">XXIR</span>
+            <span className="logo-text">WIZNOBLE</span>
+            <span className="logo-text-mirror">ELBONZIW</span>
           </Link>
         </div>
       </div>

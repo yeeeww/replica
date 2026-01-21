@@ -96,13 +96,13 @@ exports.createProduct = async (req, res) => {
   const client = await pool.connect();
   
   try {
-    const { name, description, price, category_id, image_url, stock } = req.body;
+    const { name, description, price, category_id, image_url, stock, department_price } = req.body;
 
     const result = await client.query(`
-      INSERT INTO products (name, description, price, category_id, image_url, stock)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO products (name, description, price, category_id, image_url, stock, department_price)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
-    `, [name, description, price, category_id, image_url, stock || 0]);
+    `, [name, description, price, category_id, image_url, stock || 0, department_price]);
 
     res.status(201).json({
       message: '상품이 등록되었습니다.',
@@ -122,15 +122,15 @@ exports.updateProduct = async (req, res) => {
   
   try {
     const { id } = req.params;
-    const { name, description, price, category_id, image_url, stock, is_active } = req.body;
+    const { name, description, price, category_id, image_url, stock, is_active, department_price } = req.body;
 
     const result = await client.query(`
       UPDATE products
       SET name = $1, description = $2, price = $3, category_id = $4,
-          image_url = $5, stock = $6, is_active = $7, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $8
+          image_url = $5, stock = $6, is_active = $7, department_price = $8, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $9
       RETURNING *
-    `, [name, description, price, category_id, image_url, stock, is_active, id]);
+    `, [name, description, price, category_id, image_url, stock, is_active, department_price, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: '상품을 찾을 수 없습니다.' });

@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { getProducts } from "../services/api";
 import ProductCard from "../components/ProductCard";
 import CategoryFilter from "../components/CategoryFilter";
+import { formatPrice } from "../utils/format";
 import "./Products.css";
 
 const Products = () => {
@@ -385,11 +386,18 @@ const Products = () => {
 							<div className="no-products">상품이 없습니다.</div>
 						) : (
 							<>
-								<div className="grid grid-4 products-grid">
-									{sortedProducts.map((product) => (
-										<ProductCard key={product.id} product={product} />
-									))}
+						<div className="grid grid-4 products-grid">
+							{sortedProducts.map((product) => (
+								<div key={product.id} className="product-card-with-price">
+									<ProductCard product={product} />
+									{product.department_price ? (
+										<div className="dept-price">백화점가: {formatPrice(product.department_price)}</div>
+									) : (
+										<div className="dept-price empty">　</div>
+									)}
 								</div>
+							))}
+						</div>
 
 								{pagination.totalPages > 1 && (
 									<div className="pagination">

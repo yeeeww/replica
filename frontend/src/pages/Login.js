@@ -13,6 +13,7 @@ const Login = () => {
     password: ''
   });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(location.state?.success || '');
   const [loading, setLoading] = useState(false);
 
   const from = location.state?.from?.pathname || '/';
@@ -27,6 +28,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
 
     try {
@@ -44,6 +46,7 @@ const Login = () => {
       <div className="auth-container">
         <h1>로그인</h1>
         
+        {success && <div className="success">{success}</div>}
         {error && <div className="error">{error}</div>}
 
         <form onSubmit={handleSubmit} className="auth-form">

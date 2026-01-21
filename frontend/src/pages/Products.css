@@ -173,6 +173,22 @@
 	row-gap: 26px;
 }
 
+.product-card-with-price {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dept-price {
+  font-size: 13px;
+  color: #444;
+  font-weight: 600;
+}
+
+.dept-price.empty {
+  height: 18px;
+}
+
 .no-products {
 	text-align: center;
 	padding: 100px 20px;

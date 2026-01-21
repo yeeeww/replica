@@ -97,6 +97,11 @@ const ProductDetail = () => {
             <h1 className="product-detail-name">{product.name}</h1>
             
             <p className="product-detail-price">{formatPrice(product.price)}</p>
+            {product.department_price && (
+              <p className="product-detail-dept-price">
+                백화점가: {formatPrice(product.department_price)}
+              </p>
+            )}
 
             <div className="product-meta">
               <div className="meta-row">
