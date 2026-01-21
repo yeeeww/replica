@@ -3,6 +3,7 @@ import json
 import os
 import random
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Optional
 from urllib.parse import urljoin
 
@@ -29,6 +30,7 @@ DB_CONFIG = {
     "password": os.environ.get("DB_PASSWORD", "1234"),
 }
 MAX_SAVE = int(os.environ.get("CRAWL_LIMIT", "50"))
+CATEGORY_FILTER = os.environ.get("CRAWL_CATEGORY", "")  # 예: "남성", "여성", "남성 > 지갑" 등
 
 
 def slugify(txt: str) -> str:
@@ -433,31 +435,113 @@ def main() -> None:
                     option_count += 1
         return option_count
 
-    count = 0
-    try:
-        for idx, url in enumerate(urls, start=1):
-            if count >= MAX_SAVE:
-                print(f"[STOP] 최대 {MAX_SAVE}개까지만 저장 후 중단합니다.")
-                break
-            print(f"[{idx}/{len(urls)}] 수집 중: {url}")
+    # 카테고리 필터 함수
+    def matches_category_filter(product_category: str) -> bool:
+        """상품 카테고리가 필터 조건에 맞는지 확인"""
+        if not CATEGORY_FILTER:
+            return True  # 필터 없으면 모든 카테고리 허용
+        
+        product_cat_lower = product_category.lower().strip()
+        filter_lower = CATEGORY_FILTER.lower().strip()
+        
+        # 정확히 일치하거나 시작하면 통과
+        if product_cat_lower.startswith(filter_lower):
+            return True
+        
+        # 부분 문자열 포함 체크 (예: "남성"이 "남성 > 지갑 > 프라다"에 포함)
+        filter_parts = [p.strip() for p in filter_lower.split(">")]
+        product_parts = [p.strip() for p in product_cat_lower.split(">")]
+        
+        # 필터의 모든 파트가 순서대로 상품 카테고리에 있는지 확인
+        if len(filter_parts) <= len(product_parts):
+            match = all(
+                filter_parts[i] == product_parts[i] 
+                for i in range(len(filter_parts))
+            )
+            if match:
+                return True
+        
+        return False
+    
+    if CATEGORY_FILTER:
+        print(f"[FILTER] 카테고리 필터 적용: '{CATEGORY_FILTER}'")
+
+    # 가격 정제 함수
+    def to_price(val: str) -> float:
+        digits = "".join([c for c in val if c.isdigit()])
+        return float(digits) if digits else 0.0
+
+    # 병렬 크롤링으로 카테고리 필터링된 상품만 수집
+    def fetch_and_filter(url_idx_tuple):
+        """URL에서 상품 정보 가져오고 카테고리 필터 적용"""
+        idx, url = url_idx_tuple
+        try:
             info = parse_product_detail(url)
             if not info:
-                continue
+                return None, idx, url, "파싱 실패"
+            
+            product_category = info.get("카테고리") or "기타"
+            if not matches_category_filter(product_category):
+                return None, idx, url, f"카테고리 불일치: {product_category}"
+            
+            return info, idx, url, None
+        except Exception as e:
+            return None, idx, url, str(e)
 
-            # 3뎁스 카테고리 생성
-            category_id = ensure_category_3depth(info.get("카테고리") or "기타")
-            cat_info = normalize_category(info.get("카테고리") or "기타")
+    count = 0
+    scanned = 0
+    matched_products = []
+    
+    # 필터가 있으면 병렬로 빠르게 스캔
+    if CATEGORY_FILTER:
+        print(f"[SCAN] 카테고리 '{CATEGORY_FILTER}' 상품을 병렬 스캔 중...")
+        
+        # 필요한 만큼만 찾을 때까지 배치로 처리
+        batch_size = 50  # 한 번에 50개씩 병렬 처리
+        url_batches = [urls[i:i+batch_size] for i in range(0, len(urls), batch_size)]
+        
+        for batch_idx, batch in enumerate(url_batches):
+            if len(matched_products) >= MAX_SAVE:
+                break
+                
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                futures = {
+                    executor.submit(fetch_and_filter, (scanned + i + 1, url)): url 
+                    for i, url in enumerate(batch)
+                }
+                
+                for future in as_completed(futures):
+                    info, idx, url, error = future.result()
+                    scanned += 1
+                    
+                    if info:
+                        print(f"[{idx}/{len(urls)}] [MATCH] {info.get('카테고리', '')} - {info.get('상품명', '')[:30]}")
+                        matched_products.append(info)
+                        if len(matched_products) >= MAX_SAVE:
+                            break
+                    else:
+                        # 스캔 진행률 (100개마다 표시)
+                        if scanned % 100 == 0:
+                            print(f"[SCAN] {scanned}개 스캔, {len(matched_products)}개 매칭됨...")
+            
+            # 배치 간 짧은 대기
+            time.sleep(0.5)
+        
+        print(f"[SCAN] 완료: {scanned}개 스캔, {len(matched_products)}개 매칭")
+        
+        # 매칭된 상품들 DB에 저장
+        for info in matched_products:
+            if count >= MAX_SAVE:
+                break
+                
+            product_category = info.get("카테고리") or "기타"
+            category_id = ensure_category_3depth(product_category)
+            cat_info = normalize_category(product_category)
 
             if already_exists(info["상품명"], category_id):
-                print(f"  [SKIP] 이미 존재: {info['상품명']} ({cat_info['name']})")
+                print(f"  [SKIP] 이미 존재: {info['상품명']}")
                 continue
 
-            # 가격 정제
-            def to_price(val: str) -> float:
-                digits = "".join([c for c in val if c.isdigit()])
-                return float(digits) if digits else 0.0
-
-            # 판매가격 -> price, 시중가격 -> department_price (백화점가)
             price_val = to_price(info.get("판매가격") or "")
             department_price = to_price(info.get("시중가격") or "")
             description = f"{info.get('URL','')}\n{info.get('설명이미지들','')}".strip()
@@ -469,32 +553,71 @@ def main() -> None:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, true)
                 RETURNING id
                 """,
-                (
-                    info["상품명"],
-                    description,
-                    price_val,
-                    department_price if department_price > 0 else None,
-                    category_id,
-                    image_url,
-                    10,
-                ),
+                (info["상품명"], description, price_val, 
+                 department_price if department_price > 0 else None,
+                 category_id, image_url, 10),
             )
             product_id = cur.fetchone()["id"]
             
-            # 옵션 저장
             options = info.get("옵션", [])
-            option_count = 0
-            if options:
-                option_count = save_product_options(product_id, options)
+            option_count = save_product_options(product_id, options) if options else 0
             
             count += 1
             sale = info.get("판매가격") or "가격 없음"
             opt_info = f", 옵션 {option_count}개" if option_count else ""
-            print(f"  [OK] 저장: {info['상품명']} ({sale}{opt_info})")
+            print(f"  [OK] 저장 ({count}/{MAX_SAVE}): {info['상품명']} ({sale}{opt_info})")
+    
+    else:
+        # 필터 없으면 순차 처리 (기존 방식)
+        try:
+            for idx, url in enumerate(urls, start=1):
+                if count >= MAX_SAVE:
+                    print(f"[STOP] 최대 {MAX_SAVE}개까지만 저장 후 중단합니다.")
+                    break
+                print(f"[{idx}/{len(urls)}] 수집 중: {url}")
+                info = parse_product_detail(url)
+                if not info:
+                    continue
 
-            # 서버 부하 방지를 위한 랜덤 대기 (1~3초)
-            time.sleep(random.uniform(1, 3))
+                product_category = info.get("카테고리") or "기타"
+                category_id = ensure_category_3depth(product_category)
+                cat_info = normalize_category(product_category)
 
+                if already_exists(info["상품명"], category_id):
+                    print(f"  [SKIP] 이미 존재: {info['상품명']} ({cat_info['name']})")
+                    continue
+
+                price_val = to_price(info.get("판매가격") or "")
+                department_price = to_price(info.get("시중가격") or "")
+                description = f"{info.get('URL','')}\n{info.get('설명이미지들','')}".strip()
+                image_url = info.get("대표이미지") or ""
+
+                cur.execute(
+                    """
+                    INSERT INTO products (name, description, price, department_price, category_id, image_url, stock, is_active)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, true)
+                    RETURNING id
+                    """,
+                    (info["상품명"], description, price_val,
+                     department_price if department_price > 0 else None,
+                     category_id, image_url, 10),
+                )
+                product_id = cur.fetchone()["id"]
+                
+                options = info.get("옵션", [])
+                option_count = save_product_options(product_id, options) if options else 0
+                
+                count += 1
+                sale = info.get("판매가격") or "가격 없음"
+                opt_info = f", 옵션 {option_count}개" if option_count else ""
+                print(f"  [OK] 저장: {info['상품명']} ({sale}{opt_info})")
+
+                time.sleep(random.uniform(0.5, 1.5))
+        except Exception as exc:
+            conn.rollback()
+            print(f"[ERROR] DB 저장 중 오류: {exc}")
+
+    try:
         conn.commit()
         print(f"완료! 총 {count}개의 상품을 DB에 저장했습니다.")
     except Exception as exc:

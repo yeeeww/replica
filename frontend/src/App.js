@@ -28,6 +28,7 @@ import AdminOrders from './pages/admin/AdminOrders';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminNotices from './pages/admin/AdminNotices';
 import AdminNoticeForm from './pages/admin/AdminNoticeForm';
+import AdminCrawler from './pages/admin/AdminCrawler';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -122,6 +123,7 @@ function App() {
                   <Route path="notices" element={<AdminNotices />} />
                   <Route path="notices/new" element={<AdminNoticeForm />} />
                   <Route path="notices/:id/edit" element={<AdminNoticeForm />} />
+                  <Route path="crawler" element={<AdminCrawler />} />
                 </Route>
 
                 {/* 404 */}

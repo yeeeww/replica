@@ -41,3 +41,9 @@ export const createReview = (productId, data) =>
   axios.post(`/reviews/product/${productId}`, data);
 export const updateReview = (id, data) => axios.put(`/reviews/${id}`, data);
 export const deleteReview = (id) => axios.delete(`/reviews/${id}`);
+
+// Crawler (크롤링)
+export const startCrawl = (data) => axios.post(`/admin/crawl/start`, data);
+export const stopCrawl = () => axios.post(`/admin/crawl/stop`);
+export const getCrawlStatus = () => axios.get(`/admin/crawl/status`);
+export const clearCrawlLogs = () => axios.post(`/admin/crawl/clear-logs`);

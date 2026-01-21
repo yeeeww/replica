@@ -50,6 +50,12 @@ const AdminDashboard = () => {
           >
             공지사항 관리
           </Link>
+          <Link 
+            to="/admin/crawler" 
+            className={isActive('/admin/crawler') ? 'active' : ''}
+          >
+            상품 크롤링
+          </Link>
         </nav>
         <Link to="/" className="back-to-shop">
           ← 쇼핑몰로 돌아가기
