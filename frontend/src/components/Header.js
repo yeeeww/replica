@@ -75,7 +75,7 @@ const Header = () => {
     { label: '추천상품', slug: 'recommend' },
     { label: '히트상품', slug: 'hot' },
     { label: '인기상품', slug: 'popular' },
-    { label: '공지사항', slug: 'notice' },
+    { label: '공지사항', slug: 'notice', isNotice: true },
   ];
 
   return (
@@ -90,6 +90,7 @@ const Header = () => {
               {user ? (
                 <>
                   <span className="welcome-text">{user.name || user.email}</span>
+                  <Link to="/orders" className="link-btn">주문내역</Link>
                   <button className="link-btn" onClick={handleLogout}>로그아웃</button>
                 </>
               ) : (
@@ -123,7 +124,10 @@ const Header = () => {
           <nav className="main-nav">
             {menuConfig.map((item) => (
               <div className="nav-item-wrapper" key={item.slug}>
-                <Link to={`/products?category=${item.slug}`} className="nav-item">
+                <Link 
+                  to={item.isNotice ? '/notices' : `/products?category=${item.slug}`} 
+                  className="nav-item"
+                >
                   {item.label}
                 </Link>
                 {item.children && (
@@ -143,7 +147,7 @@ const Header = () => {
             ))}
             {isAdmin && (
               <Link to="/admin" className="nav-item">
-                출고 검수 사진
+                관리자
               </Link>
             )}
           </nav>

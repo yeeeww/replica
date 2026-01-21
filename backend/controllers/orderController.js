@@ -186,7 +186,7 @@ exports.updateOrderStatus = async (req, res) => {
   
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, tracking_number, shipping_carrier } = req.body;
 
     const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
     if (!validStatuses.includes(status)) {
@@ -194,8 +194,8 @@ exports.updateOrderStatus = async (req, res) => {
     }
 
     const result = await client.query(
-      'UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
-      [status, id]
+      'UPDATE orders SET status = $1, tracking_number = $2, shipping_carrier = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
+      [status, tracking_number || null, shipping_carrier || null, id]
     );
 
     if (result.rows.length === 0) {

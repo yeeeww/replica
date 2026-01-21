@@ -132,7 +132,7 @@
 	background: #fff;
 	border: 1px solid #e5e5e5;
 	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-	z-index: 10;
+	z-index: 1000;
 }
 
 .nav-item-wrapper:hover .nav-dropdown {
@@ -220,10 +220,15 @@
 
 /* 반응형 디자인 */
 @media (max-width: 1024px) {
-	.main-nav {
+	.header-nav {
 		overflow-x: auto;
-		justify-content: flex-start;
+		overflow-y: visible;
 		-webkit-overflow-scrolling: touch;
+	}
+
+	.main-nav {
+		justify-content: flex-start;
+		min-width: max-content;
 	}
 
 	.nav-item {
@@ -258,15 +263,20 @@
 		padding: 15px 0;
 	}
 
-	.main-nav {
-		gap: 0;
+	.header-nav {
 		overflow-x: auto;
+		overflow-y: visible;
 		-webkit-overflow-scrolling: touch;
 		scrollbar-width: none;
 	}
 
-	.main-nav::-webkit-scrollbar {
+	.header-nav::-webkit-scrollbar {
 		display: none;
+	}
+
+	.main-nav {
+		gap: 0;
+		min-width: max-content;
 	}
 
 	.nav-item {

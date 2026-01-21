@@ -1,0 +1,147 @@
+.notices-page {
+  padding: 40px 0;
+  min-height: 60vh;
+}
+
+.notices-page h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.notices-list {
+  border-top: 2px solid #111;
+}
+
+.notices-header {
+  display: grid;
+  grid-template-columns: 80px 1fr 120px 80px;
+  padding: 16px 20px;
+  background-color: #f9f9f9;
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+  border-bottom: 1px solid #ddd;
+}
+
+.notices-item {
+  display: grid;
+  grid-template-columns: 80px 1fr 120px 80px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+  color: #333;
+  transition: background-color 0.2s;
+}
+
+.notices-item:hover {
+  background-color: #fafafa;
+}
+
+.notices-item.pinned {
+  background-color: #fffbeb;
+}
+
+.notices-item.pinned:hover {
+  background-color: #fef3c7;
+}
+
+.notices-col-num {
+  text-align: center;
+  color: #888;
+}
+
+.notices-col-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.notices-col-date {
+  text-align: center;
+  color: #888;
+}
+
+.notices-col-views {
+  text-align: center;
+  color: #888;
+}
+
+.notice-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background-color: #111;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 2px;
+}
+
+.notices-empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: #888;
+  font-size: 15px;
+}
+
+.notices-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.notices-pagination button {
+  padding: 8px 16px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.notices-pagination button:hover:not(:disabled) {
+  background-color: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+.notices-pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.notices-pagination span {
+  font-size: 14px;
+  color: #666;
+}
+
+@media (max-width: 768px) {
+  .notices-header {
+    display: none;
+  }
+
+  .notices-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+  }
+
+  .notices-col-num {
+    display: none;
+  }
+
+  .notices-col-title {
+    font-size: 15px;
+  }
+
+  .notices-col-date,
+  .notices-col-views {
+    font-size: 12px;
+    text-align: left;
+  }
+}

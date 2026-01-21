@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getProducts } from "../services/api";
 import ProductCard from "../components/ProductCard";
-import { formatPrice } from "../utils/format";
 import "./Products.css";
 
 const Products = () => {
@@ -68,32 +67,30 @@ const Products = () => {
 		clothing: "CLOTHING",
 		shoes: "SHOES",
 		acc: "ACC",
-		men: "MEN",
-		women: "WOMEN",
-		domestic: "국내출고",
+		men: "HIGH-END-MEN",
+		women: "HIGH-END-WOMEN",
+		domestic: "HIGH-END-DOMESTIC",
 		recommend: "RECOMMENDED",
 		hot: "HIT PRODUCTS",
-		popular: "POPULAR PRODUCTS",
-		notice: "공지사항",
+		popular: "POPULAR",
+		notice: "NOTICE",
 	};
 
-	const bannerSubtitleMap = {
-		bags: "베스트 가방 셀렉션",
-		clothing: "베스트 의류 셀렉션",
-		shoes: "베스트 신발 셀렉션",
-		acc: "베스트 ACC 셀렉션",
-		men: "하이엔드 남성 컬렉션",
-		women: "하이엔드 여성 컬렉션",
-		domestic: "빠른 국내출고 상품",
-		recommend: "추천 상품을 만나보세요",
-		hot: "히트 상품 특가전",
-		popular: "인기 상품 베스트",
-		notice: "새로운 소식을 전해드립니다",
-	};
+	// 카테고리 아이콘 데이터
+	const categoryIcons = [
+		{ label: "하이엔드 의류", slug: "men-clothing", image: "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=200&h=200&fit=crop" },
+		{ label: "하이엔드 가방", slug: "men-bag", image: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=200&h=200&fit=crop" },
+		{ label: "하이엔드 신발", slug: "men-shoes", image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200&h=200&fit=crop" },
+		{ label: "하이엔드 시계", slug: "men-watch", image: "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=200&h=200&fit=crop" },
+		{ label: "하이엔드 지갑", slug: "men-wallet", image: "https://images.unsplash.com/photo-1627123424574-724758594e93?w=200&h=200&fit=crop" },
+		{ label: "하이엔드 벨트", slug: "men-belt", image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=200&h=200&fit=crop" },
+		{ label: "하이엔드 모자", slug: "men-hat", image: "https://images.unsplash.com/photo-1521369909029-2afed882baee?w=200&h=200&fit=crop" },
+		{ label: "하이엔드 ACC", slug: "men-accessory", image: "https://images.unsplash.com/photo-1611923134239-b9be5816e23c?w=200&h=200&fit=crop" },
+	];
 
 	const subcategories = {
 		men: [
-			{ label: "전체", slug: "men" },
+			{ label: "Show All", slug: "men" },
 			{ label: "가방", slug: "men-bag" },
 			{ label: "지갑", slug: "men-wallet" },
 			{ label: "시계", slug: "men-watch" },
@@ -260,15 +257,41 @@ const Products = () => {
 		setBestIndex((prev) => (prev + 1) % bestSlides.length);
 	};
 
+	// 자동 슬라이드 (5초마다)
+	useEffect(() => {
+		if (bestSlides.length <= 1) return;
+		const timer = setInterval(() => {
+			setBestIndex((prev) => (prev + 1) % bestSlides.length);
+		}, 5000);
+		return () => clearInterval(timer);
+	}, [bestSlides.length]);
+
 	return (
 		<div className="products-page">
+			{/* 상단 배너 (PC/모바일 공통) */}
 			<div
 				className="category-banner"
-				style={{ backgroundImage: `url(${bannerByMain[deriveMain] || bannerByMain.clothing})` }}>
+				style={{ backgroundImage: `url(${bannerByMain[deriveMain] || bannerByMain.men})` }}>
 				<div className="category-banner-overlay" />
 				<div className="category-banner-content">
-					<h1>{bannerTitleMap[deriveMain] || deriveMain.toUpperCase()}</h1>
-					<p>{bannerSubtitleMap[deriveMain] || "베스트 셀러를 만나보세요"}</p>
+					<h1>{bannerTitleMap[deriveMain] || "HIGH-END"}</h1>
+				</div>
+			</div>
+
+			{/* 카테고리 아이콘 그리드 (PC/모바일 공통) */}
+			<div className="products-cat-section">
+				<div className="products-cat-grid">
+					{categoryIcons.map((cat) => (
+						<button
+							key={cat.slug}
+							className={`products-cat-item ${category === cat.slug ? "active" : ""}`}
+							onClick={() => handleCategoryChange(cat.slug)}>
+							<div className="products-cat-img">
+								<img src={cat.image} alt={cat.label} />
+							</div>
+							<span>{cat.label}</span>
+						</button>
+					))}
 				</div>
 			</div>
 
@@ -280,7 +303,7 @@ const Products = () => {
 							<button
 								key={item.slug}
 								className={`subcategory-btn ${category === item.slug ? "active" : ""} ${
-									!category && item.label === "전체" ? "active" : ""
+									!category && item.label === "Show All" ? "active" : ""
 								}`}
 								onClick={() =>
 									handleCategoryChange(item.slug === deriveMain ? deriveMain : item.slug)
@@ -330,25 +353,30 @@ const Products = () => {
 						{!loading && bestProducts.length > 0 && (
 							<section className="weekly-best">
 								<div className="weekly-head">
-									<h3>WEEKLY BEST</h3>
-									<span>주간 인기 상품</span>
+									<img 
+										src="https://cdn.imweb.me/thumbnail/20251207/a0e50eaa9bfeb.png" 
+										alt="WEEKLY BEST" 
+										className="weekly-title-img"
+									/>
 								</div>
 								<div className="weekly-slider">
 									<button className="weekly-nav prev" onClick={prevBest}>
 										‹
 									</button>
-									<div
-										className="weekly-track"
-										style={{ transform: `translateX(-${bestIndex * 100}%)` }}>
-										{bestSlides.map((group, idx) => (
-											<div className="weekly-slide" key={idx}>
-												{group.map((product) => (
-													<div key={product.id} className="weekly-card">
-														<ProductCard product={product} />
-													</div>
-												))}
-											</div>
-										))}
+									<div className="weekly-slider-inner">
+										<div
+											className="weekly-track"
+											style={{ transform: `translateX(-${bestIndex * 100}%)` }}>
+											{bestSlides.map((group, idx) => (
+												<div className="weekly-slide" key={idx}>
+													{group.map((product) => (
+														<div key={product.id} className="weekly-card">
+															<ProductCard product={product} />
+														</div>
+													))}
+												</div>
+											))}
+										</div>
 									</div>
 									<button className="weekly-nav next" onClick={nextBest}>
 										›
@@ -386,14 +414,7 @@ const Products = () => {
 							<>
 						<div className="grid grid-4 products-grid">
 							{sortedProducts.map((product) => (
-								<div key={product.id} className="product-card-with-price">
-									<ProductCard product={product} />
-									{product.department_price ? (
-										<div className="dept-price">백화점가: {formatPrice(product.department_price)}</div>
-									) : (
-										<div className="dept-price empty">　</div>
-									)}
-								</div>
+								<ProductCard key={product.id} product={product} />
 							))}
 						</div>
 

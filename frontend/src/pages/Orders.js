@@ -8,6 +8,13 @@ const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const statusSteps = [
+    { key: 'pending', label: '주문 접수' },
+    { key: 'processing', label: '처리중' },
+    { key: 'shipped', label: '배송중' },
+    { key: 'delivered', label: '배송 완료' },
+  ];
+
   useEffect(() => {
     fetchOrders();
   }, []);
@@ -66,6 +73,25 @@ const Orders = () => {
                 </span>
               </div>
 
+                <div className="order-progress">
+                  {statusSteps.map((step, idx) => {
+                    const currentIndex = statusSteps.findIndex(s => s.key === order.status);
+                    const isActive = currentIndex >= idx && currentIndex !== -1;
+                    const isCompleted = currentIndex > idx;
+                    const isCancelled = order.status === 'cancelled';
+                    return (
+                      <div key={step.key} className={`progress-step ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''} ${isCancelled ? 'cancelled' : ''}`}>
+                        <div className="progress-circle" />
+                        <span className="progress-label">{step.label}</span>
+                        {idx < statusSteps.length - 1 && <div className="progress-bar" />}
+                      </div>
+                    );
+                  })}
+                  {order.status === 'cancelled' && (
+                    <div className="cancel-text">취소됨</div>
+                  )}
+                </div>
+
               <div className="order-info">
                 <div className="order-info-item">
                   <span className="order-info-label">수령인</span>
@@ -79,6 +105,10 @@ const Orders = () => {
                   <span className="order-info-label">결제 금액</span>
                   <span className="order-total">{formatPrice(order.total_amount)}</span>
                 </div>
+                  <div className="order-info-item">
+                    <span className="order-info-label">결제 수단</span>
+                    <span>무통장 입금 (계좌이체)</span>
+                  </div>
               </div>
             </Link>
           ))}

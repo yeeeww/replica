@@ -21,5 +21,15 @@ export const deleteCategory = (id) => axios.delete(`/categories/${id}`);
 export const getOrders = (params) => axios.get(`/orders`, { params });
 export const getOrder = (id) => axios.get(`/orders/${id}`);
 export const createOrder = (data) => axios.post(`/orders`, data);
-export const updateOrderStatus = (id, status) =>
-	axios.patch(`/orders/${id}/status`, { status });
+export const updateOrderStatus = (id, data) =>
+	axios.patch(`/orders/${id}/status`, data);
+
+// Admin
+export const getUsers = () => axios.get(`/admin/users`);
+
+// Notices (공지사항)
+export const getNotices = (params) => axios.get(`/notices`, { params });
+export const getNotice = (id) => axios.get(`/notices/${id}`);
+export const createNotice = (data) => axios.post(`/notices`, data);
+export const updateNotice = (id, data) => axios.put(`/notices/${id}`, data);
+export const deleteNotice = (id) => axios.delete(`/notices/${id}`);

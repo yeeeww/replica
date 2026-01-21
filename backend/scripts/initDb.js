@@ -76,6 +76,7 @@ const initDatabase = async () => {
         user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
         total_amount DECIMAL(10, 2) NOT NULL,
         status VARCHAR(50) DEFAULT 'pending',
+        tracking_number VARCHAR(100),
         shipping_address TEXT NOT NULL,
         shipping_name VARCHAR(255) NOT NULL,
         shipping_phone VARCHAR(50) NOT NULL,

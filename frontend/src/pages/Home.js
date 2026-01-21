@@ -16,41 +16,18 @@ const Home = () => {
 		{
 			id: 1,
 			image: "https://jpound2024.cafe24.com/images/slider/main/1_2.webp",
-			title: "하이엔드 상품 할인",
-			subtitle: "UP TO 50% OFF",
-			description: "오후 4시 이전 주문 건 당일 발송",
-			buttonText: "지금 쇼핑하기",
-			buttonLink: "/products",
 		},
 		{
 			id: 2,
-			image:
-				"https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1600&h=600&fit=crop",
-			title: "NEW ARRIVALS",
-			subtitle: "2024 신상품",
-			description: "최신 트렌드를 만나보세요",
-			buttonText: "신상품 보기",
-			buttonLink: "/products?category=new",
+			image: "https://jpound2024.cafe24.com/images/slider/main/7_4.webp",
 		},
 		{
 			id: 3,
-			image:
-				"https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=1600&h=600&fit=crop",
-			title: "LUXURY COLLECTION",
-			subtitle: "프리미엄 컬렉션",
-			description: "엄선된 명품 브랜드",
-			buttonText: "컬렉션 보기",
-			buttonLink: "/products?category=luxury",
+			image: "https://jpound2024.cafe24.com/images/slider/main/1_898.jpg",
 		},
 		{
 			id: 4,
-			image:
-				"https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=1600&h=600&fit=crop",
-			title: "WATCH COLLECTION",
-			subtitle: "시계 특가전",
-			description: "최대 40% 할인",
-			buttonText: "시계 보기",
-			buttonLink: "/products?category=watch",
+			image: "https://jpound2024.cafe24.com/images/slider/main/1_1.webp",
 		},
 	];
 
@@ -93,46 +70,39 @@ const Home = () => {
 
 	const categoryCards = [
 		{
+			slug: "recommend",
+			title: "RECOMMENDED",
+			subtitle: "추천상품관",
+			image:
+				"https://images.unsplash.com/photo-1607083206869-4c7672e72a8a?auto=format&fit=crop&w=800&q=80",
+		},
+		{
 			slug: "men",
 			title: "MEN",
 			subtitle: "하이엔드 남성관",
 			image:
-				"https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?auto=format&fit=crop&w=1400&q=80",
+				"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80",
 		},
 		{
 			slug: "women",
 			title: "WOMEN",
 			subtitle: "하이엔드 여성관",
 			image:
-				"https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1400&q=80",
-		},
-		{
-			slug: "domestic",
-			title: "국내출고상품",
-			subtitle: "국내 출고 명품",
-			image:
-				"https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=1400&q=80",
-		},
-		{
-			slug: "recommend",
-			title: "추천상품",
-			subtitle: "추천 상품",
-			image:
-				"https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1400&q=80",
+				"https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80",
 		},
 		{
 			slug: "hot",
-			title: "히트상품",
-			subtitle: "히트 상품",
+			title: "HIT PRODUCTS",
+			subtitle: "히트상품관",
 			image:
-				"https://images.unsplash.com/photo-1524592094714-0f0654e20314?auto=format&fit=crop&w=1400&q=80",
+				"https://images.unsplash.com/photo-1587836374828-4dbafa94cf0e?auto=format&fit=crop&w=800&q=80",
 		},
 		{
-			slug: "popular",
-			title: "인기상품",
-			subtitle: "인기 상품",
+			slug: "notice",
+			title: "NOTICE",
+			subtitle: "공지사항",
 			image:
-				"https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1400&q=80",
+				"https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&q=80",
 		},
 	];
 
@@ -142,28 +112,28 @@ const Home = () => {
 			title: "BEST Bags Collection",
 			subtitle: "베스트 가방 모아보기",
 			banner:
-				"https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1800&q=80",
+				"https://jpound2024.cafe24.com/images/slider/main/9_9.webp"
 		},
 		{
 			slug: "clothing",
 			title: "BEST Clothing Collection",
 			subtitle: "베스트 의류 모아보기",
 			banner:
-				"https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=1800&q=80",
+				"https://jpound2024.cafe24.com/images/slider/main/2_3.webp",
 		},
 		{
 			slug: "shoes",
 			title: "BEST Shoes Collection",
 			subtitle: "베스트 신발 모아보기",
 			banner:
-				"https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=1800&q=80",
+				"https://jpound2024.cafe24.com/images/slider/main/5_4.webp"
 		},
 		{
 			slug: "acc",
 			title: "BEST ACC Collection",
 			subtitle: "베스트 액세서리 모아보기",
 			banner:
-				"https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=1800&q=80",
+				"https://jpound2024.cafe24.com/images/slider/main/4_1.webp"
 		},
 	];
 
@@ -234,17 +204,6 @@ const Home = () => {
 							key={slide.id}
 							className={`slide ${index === currentSlide ? "active" : ""}`}
 							style={{ backgroundImage: `url(${slide.image})` }}>
-							<div className="slide-overlay"></div>
-							<div className="container">
-								<div className="slide-content">
-									<p className="slide-subtitle">{slide.subtitle}</p>
-									<h1 className="slide-title">{slide.title}</h1>
-									<p className="slide-description">{slide.description}</p>
-									<Link to={slide.buttonLink} className="slide-button">
-										{slide.buttonText}
-									</Link>
-								</div>
-							</div>
 						</div>
 					))}
 				</div>
@@ -279,7 +238,7 @@ const Home = () => {
 								to={`/products?category=${card.slug}`}
 								className="category-icon-card">
 								<div
-									className="category-icon-img"
+									className="category-icon-img-home"
 									style={{ backgroundImage: `url(${card.image})` }}>
 									<span className="category-icon-text">{card.title}</span>
 								</div>

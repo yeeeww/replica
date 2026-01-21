@@ -38,6 +38,18 @@ const AdminDashboard = () => {
           >
             주문 관리
           </Link>
+          <Link 
+            to="/admin/users" 
+            className={isActive('/admin/users') ? 'active' : ''}
+          >
+            회원 관리
+          </Link>
+          <Link 
+            to="/admin/notices" 
+            className={isActive('/admin/notices') ? 'active' : ''}
+          >
+            공지사항 관리
+          </Link>
         </nav>
         <Link to="/" className="back-to-shop">
           ← 쇼핑몰로 돌아가기

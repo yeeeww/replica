@@ -16,12 +16,18 @@ import Checkout from './pages/Checkout';
 import Orders from './pages/Orders';
 import OrderDetail from './pages/OrderDetail';
 
+import Notices from './pages/Notices';
+import NoticeDetail from './pages/NoticeDetail';
+
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminHome from './pages/admin/AdminHome';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminProductForm from './pages/admin/AdminProductForm';
 import AdminCategories from './pages/admin/AdminCategories';
 import AdminOrders from './pages/admin/AdminOrders';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminNotices from './pages/admin/AdminNotices';
+import AdminNoticeForm from './pages/admin/AdminNoticeForm';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -58,6 +64,8 @@ function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/products" element={<Products />} />
                 <Route path="/products/:id" element={<ProductDetail />} />
+                <Route path="/notices" element={<Notices />} />
+                <Route path="/notices/:id" element={<NoticeDetail />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
 
@@ -110,6 +118,10 @@ function App() {
                   <Route path="products/:id/edit" element={<AdminProductForm />} />
                   <Route path="categories" element={<AdminCategories />} />
                   <Route path="orders" element={<AdminOrders />} />
+                  <Route path="users" element={<AdminUsers />} />
+                  <Route path="notices" element={<AdminNotices />} />
+                  <Route path="notices/new" element={<AdminNoticeForm />} />
+                  <Route path="notices/:id/edit" element={<AdminNoticeForm />} />
                 </Route>
 
                 {/* 404 */}
