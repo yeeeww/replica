@@ -1,30 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { getCategories } from '../services/api';
+import React, { useState } from 'react';
 import './CategoryFilter.css';
 
 const CategoryFilter = ({ selectedCategory, onCategoryChange }) => {
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [openSubmenu, setOpenSubmenu] = useState(null);
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
-    try {
-      const response = await getCategories();
-      setCategories(response.data.categories);
-    } catch (error) {
-      console.error('Failed to fetch categories:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return <div className="category-filter loading">로딩중...</div>;
-  }
 
   const defaultCategories = [
     { 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getProduct, createProduct, updateProduct, getCategories } from '../../services/api';
 
@@ -21,13 +21,6 @@ const AdminProductForm = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchCategories();
-    if (isEdit) {
-      fetchProduct();
-    }
-  }, [id]);
-
   const fetchCategories = async () => {
     try {
       const response = await getCategories();
@@ -37,7 +30,7 @@ const AdminProductForm = () => {
     }
   };
 
-  const fetchProduct = async () => {
+  const fetchProduct = useCallback(async () => {
     try {
       const response = await getProduct(id);
       const product = response.data.product;
@@ -55,7 +48,14 @@ const AdminProductForm = () => {
       console.error('Failed to fetch product:', error);
       setError('상품을 불러올 수 없습니다.');
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchCategories();
+    if (isEdit) {
+      fetchProduct();
+    }
+  }, [id, isEdit, fetchProduct]);
 
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;

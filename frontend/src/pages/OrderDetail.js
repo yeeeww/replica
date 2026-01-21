@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { getOrder } from '../services/api';
 import { formatPrice, formatDate, getOrderStatusText, getOrderStatusColor } from '../utils/format';
@@ -11,18 +11,7 @@ const OrderDetail = () => {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(location.state?.message || '');
 
-  useEffect(() => {
-    fetchOrder();
-  }, [id]);
-
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => setMessage(''), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [message]);
-
-  const fetchOrder = async () => {
+  const fetchOrder = useCallback(async () => {
     try {
       const response = await getOrder(id);
       setOrder(response.data.order);
@@ -31,7 +20,18 @@ const OrderDetail = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchOrder();
+  }, [fetchOrder]);
+
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(''), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
 
   if (loading) {
     return <div className="container loading">주문 정보를 불러오는 중...</div>;

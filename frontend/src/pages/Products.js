@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getProducts } from "../services/api";
 import ProductCard from "../components/ProductCard";
-import CategoryFilter from "../components/CategoryFilter";
 import { formatPrice } from "../utils/format";
 import "./Products.css";
 
@@ -38,7 +37,7 @@ const Products = () => {
 		if (!category) return "men";
 		const base = category.split("-")[0];
 		return mainCategoryMap[base] || base || "men";
-	}, [category]);
+	}, [category, mainCategoryMap]);
 
 	const bannerByMain = {
 		bags:

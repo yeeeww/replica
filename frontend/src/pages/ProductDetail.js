@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getProduct } from "../services/api";
 import { useAuth } from "../context/AuthContext";
@@ -17,11 +17,7 @@ const ProductDetail = () => {
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState({ type: "", text: "" });
 
-  useEffect(() => {
-    fetchProduct();
-  }, [id]);
-
-  const fetchProduct = async () => {
+  const fetchProduct = useCallback(async () => {
     try {
       const response = await getProduct(id);
       setProduct(response.data.product);
@@ -31,7 +27,11 @@ const ProductDetail = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchProduct();
+  }, [fetchProduct]);
 
   const handleAddToCart = async () => {
     if (!isAuthenticated) {
