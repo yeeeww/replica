@@ -18,6 +18,7 @@ const AdminProductForm = () => {
     department_price: '',
     is_active: true
   });
+  const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -44,6 +45,23 @@ const AdminProductForm = () => {
         department_price: product.department_price || '',
         is_active: product.is_active
       });
+      
+      // 옵션 데이터 변환
+      if (product.options) {
+        const optionList = [];
+        Object.entries(product.options).forEach(([name, values]) => {
+          values.forEach(opt => {
+            optionList.push({
+              id: opt.id,
+              option_name: name,
+              option_value: opt.value,
+              price_adjustment: opt.price_adjustment || 0,
+              stock: opt.stock || 0
+            });
+          });
+        });
+        setOptions(optionList);
+      }
     } catch (error) {
       console.error('Failed to fetch product:', error);
       setError('상품을 불러올 수 없습니다.');
@@ -65,6 +83,27 @@ const AdminProductForm = () => {
     });
   };
 
+  // 옵션 관련 핸들러
+  const handleOptionChange = (index, field, value) => {
+    const newOptions = [...options];
+    newOptions[index] = { ...newOptions[index], [field]: value };
+    setOptions(newOptions);
+  };
+
+  const addOption = () => {
+    setOptions([...options, {
+      id: null,
+      option_name: '',
+      option_value: '',
+      price_adjustment: 0,
+      stock: 10
+    }]);
+  };
+
+  const removeOption = (index) => {
+    setOptions(options.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -76,7 +115,14 @@ const AdminProductForm = () => {
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock),
         category_id: formData.category_id ? parseInt(formData.category_id) : null,
-        department_price: formData.department_price ? parseFloat(formData.department_price) : null
+        department_price: formData.department_price ? parseFloat(formData.department_price) : null,
+        options: options.filter(opt => opt.option_name && opt.option_value).map(opt => ({
+          id: opt.id,
+          option_name: opt.option_name,
+          option_value: opt.option_value,
+          price_adjustment: parseFloat(opt.price_adjustment) || 0,
+          stock: parseInt(opt.stock) || 0
+        }))
       };
 
       if (isEdit) {
@@ -208,6 +254,92 @@ const AdminProductForm = () => {
               />
               활성 상태
             </label>
+          </div>
+
+          {/* 옵션 관리 섹션 */}
+          <div className="form-group" style={{ marginTop: '32px', borderTop: '1px solid #e0e0e0', paddingTop: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <label style={{ fontSize: '16px', fontWeight: '600' }}>상품 옵션</label>
+              <button
+                type="button"
+                onClick={addOption}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#28a745',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '13px'
+                }}
+              >
+                + 옵션 추가
+              </button>
+            </div>
+
+            {options.length === 0 ? (
+              <p style={{ color: '#888', fontSize: '14px' }}>등록된 옵션이 없습니다.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {options.map((opt, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1.5fr 100px 80px 40px',
+                      gap: '8px',
+                      alignItems: 'center',
+                      padding: '12px',
+                      backgroundColor: '#f9f9f9',
+                      borderRadius: '4px'
+                    }}
+                  >
+                    <input
+                      type="text"
+                      placeholder="옵션명 (예: 컬러)"
+                      value={opt.option_name}
+                      onChange={(e) => handleOptionChange(index, 'option_name', e.target.value)}
+                      style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="옵션값 (예: 블랙)"
+                      value={opt.option_value}
+                      onChange={(e) => handleOptionChange(index, 'option_value', e.target.value)}
+                      style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                    <input
+                      type="number"
+                      placeholder="추가금액"
+                      value={opt.price_adjustment}
+                      onChange={(e) => handleOptionChange(index, 'price_adjustment', e.target.value)}
+                      style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                    <input
+                      type="number"
+                      placeholder="재고"
+                      value={opt.stock}
+                      onChange={(e) => handleOptionChange(index, 'stock', e.target.value)}
+                      style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeOption(index)}
+                      style={{
+                        padding: '8px',
+                        backgroundColor: '#dc3545',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>

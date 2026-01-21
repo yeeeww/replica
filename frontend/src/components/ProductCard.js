@@ -19,11 +19,20 @@ const ProductCard = ({ product }) => {
         <img src={product.image_url} alt={product.name} />
       </div>
       <div className="product-info">
+        {product.category_full_path && (
+          <p className="product-category-path">{product.category_full_path}</p>
+        )}
         <h3 className="product-name">{product.name}</h3>
         {product.department_price && (
-          <p className="product-dept-price">【백화점가 {Math.floor(product.department_price )}원】</p>
+          <p className="product-dept-price">
+            <span className="dept-label">백화점가</span>
+            <span className="dept-value">{formatPrice(product.department_price)}</span>
+          </p>
         )}
-        <p className="product-price">판매가 {formatPrice(product.price)}</p>
+        <p className="product-price">
+          <span className="price-label">판매가</span>
+          <span className="price-value">{formatPrice(product.price)}</span>
+        </p>
         {isNew() && <span className="product-badge-new">NEW</span>}
         <div className="product-meta">
           <span className="product-reviews">

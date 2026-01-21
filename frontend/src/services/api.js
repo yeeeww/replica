@@ -11,7 +11,7 @@ export const updateProduct = (id, data) => axios.put(`/products/${id}`, data);
 export const deleteProduct = (id) => axios.delete(`/products/${id}`);
 
 // Categories
-export const getCategories = () => axios.get(`/categories`);
+export const getCategories = (params) => axios.get(`/categories`, { params });
 export const createCategory = (data) => axios.post(`/categories`, data);
 export const updateCategory = (id, data) =>
 	axios.put(`/categories/${id}`, data);
@@ -33,3 +33,11 @@ export const getNotice = (id) => axios.get(`/notices/${id}`);
 export const createNotice = (data) => axios.post(`/notices`, data);
 export const updateNotice = (id, data) => axios.put(`/notices/${id}`, data);
 export const deleteNotice = (id) => axios.delete(`/notices/${id}`);
+
+// Reviews (구매평)
+export const getProductReviews = (productId, params) => 
+  axios.get(`/reviews/product/${productId}`, { params });
+export const createReview = (productId, data) => 
+  axios.post(`/reviews/product/${productId}`, data);
+export const updateReview = (id, data) => axios.put(`/reviews/${id}`, data);
+export const deleteReview = (id) => axios.delete(`/reviews/${id}`);

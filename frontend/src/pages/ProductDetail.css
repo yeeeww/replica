@@ -45,8 +45,45 @@
   line-height: 1.3;
 }
 
+.product-detail-prices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.product-detail-dept-price {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  color: #999;
+}
+
+.product-detail-dept-price .price-label {
+  color: #888;
+}
+
+.product-detail-dept-price .price-value {
+  text-decoration: line-through;
+  color: #999;
+}
+
 .product-detail-price {
-  font-size: 28px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.product-detail-price .price-label {
+  font-size: 15px;
+  font-weight: 500;
+  color: #666;
+}
+
+.product-detail-price .price-value {
+  color: #e74c3c;
   font-weight: 700;
 }
 
@@ -67,6 +104,47 @@
 .product-detail-stock {
   font-size: 14px;
   color: var(--secondary-color);
+}
+
+/* 옵션 선택 */
+.product-options {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 0;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.option-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.option-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.option-select {
+  padding: 12px 16px;
+  font-size: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: #fff;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.option-select:focus {
+  outline: none;
+  border-color: #000;
+}
+
+.option-select:hover {
+  border-color: #999;
 }
 
 .quantity-selector {
@@ -136,14 +214,104 @@
 .alert.success { background: #e8f7ec; color: #0f5132; border: 1px solid #badbcc; }
 .alert.error { background: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
 
+/* 탭 메뉴 */
+.product-tabs {
+  display: flex;
+  margin-top: 60px;
+  border-bottom: 1px solid #ddd;
+}
+
+.product-tab {
+  flex: 1;
+  padding: 18px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  background: #f5f5f5;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #666;
+}
+
+.product-tab:first-child {
+  border-right: 1px solid #ddd;
+}
+
+.product-tab.active {
+  background: #000;
+  color: #fff;
+  border-bottom-color: #000;
+}
+
+.product-tab:hover:not(.active) {
+  background: #eee;
+  color: #333;
+}
+
+/* 탭 컨텐츠 */
+.product-tab-content {
+  min-height: 400px;
+  padding: 40px 0;
+}
+
 .detail-images-section {
-  margin-top: 40px;
+  margin-top: 0;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .detail-images-section h3 {
   font-size: 18px;
   font-weight: 700;
   margin-bottom: 16px;
+}
+
+/* 상세정보 펼침/접힘 */
+.detail-images-wrapper {
+  position: relative;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.detail-images-wrapper.collapsed {
+  max-height: 600px;
+}
+
+.detail-images-wrapper.expanded {
+  max-height: none;
+}
+
+.detail-fade-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 150px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 100%);
+  pointer-events: none;
+}
+
+.detail-expand-btn {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  margin: 30px auto 0;
+  padding: 16px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #666;
+  background: #fff;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.detail-expand-btn:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+  color: #333;
 }
 
 .detail-images-grid {
@@ -154,8 +322,280 @@
 
 .detail-images-grid img {
   width: 100%;
+  max-width: 600px;
   height: auto;
   object-fit: contain;
+  margin: 0 auto;
+  display: block;
+}
+
+.no-detail-images {
+  text-align: center;
+  padding: 80px 20px;
+  color: #999;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+/* 구매평 섹션 */
+.reviews-section {
+  padding: 0;
+}
+
+.reviews-loading {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.reviews-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.reviews-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reviews-header h3 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.reviews-count {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+}
+
+.reviews-avg-rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.avg-stars .star {
+  color: #ddd;
+  font-size: 18px;
+}
+
+.avg-stars .star.filled {
+  color: #ffc107;
+}
+
+.avg-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+}
+
+.write-review-btn {
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: #000;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.write-review-btn:hover {
+  background: #333;
+}
+
+/* 리뷰 작성 폼 */
+.review-form {
+  background: #f9f9f9;
+  padding: 24px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.review-form .form-group {
+  margin-bottom: 20px;
+}
+
+.review-form .form-group:last-of-type {
+  margin-bottom: 20px;
+}
+
+.review-form label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.rating-selector {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rating-star {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #ddd;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.rating-star.selected {
+  color: #ffc107;
+}
+
+.rating-star:hover {
+  color: #ffc107;
+}
+
+.rating-text {
+  margin-left: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.review-textarea {
+  width: 100%;
+  padding: 14px;
+  font-size: 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  resize: vertical;
+  min-height: 120px;
+  font-family: inherit;
+}
+
+.review-textarea:focus {
+  outline: none;
+  border-color: #000;
+}
+
+.char-count {
+  display: block;
+  text-align: right;
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.submit-review-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: #000;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.submit-review-btn:hover:not(:disabled) {
+  background: #333;
+}
+
+.submit-review-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.no-reviews {
+  text-align: center;
+  padding: 80px 20px;
+  color: #666;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.no-reviews p {
+  margin: 0;
+  font-size: 16px;
+}
+
+.no-reviews .sub-text {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #999;
+}
+
+.review-item {
+  padding: 20px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.review-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.review-rating {
+  display: flex;
+  gap: 2px;
+}
+
+.review-rating .star {
+  color: #ddd;
+  font-size: 16px;
+}
+
+.review-rating .star.filled {
+  color: #ffc107;
+}
+
+.review-author {
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+}
+
+.review-date {
+  font-size: 13px;
+  color: #999;
+  margin-left: auto;
+}
+
+.review-content {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+  margin: 0;
+}
+
+.review-images {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.review-images img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #eee;
 }
 
 @media (max-width: 768px) {
@@ -169,7 +609,50 @@
   }
 
   .product-detail-price {
-    font-size: 22px;
+    font-size: 20px;
+  }
+
+  .product-detail-price .price-value {
+    font-size: 20px;
+  }
+
+  .product-detail-dept-price {
+    font-size: 14px;
+  }
+
+  .product-tabs {
+    margin-top: 40px;
+  }
+
+  .product-tab {
+    padding: 14px 16px;
+    font-size: 14px;
+  }
+
+  .product-tab-content {
+    padding: 24px 0;
+    min-height: 300px;
+  }
+
+  .reviews-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .review-header {
+    flex-wrap: wrap;
+  }
+
+  .review-date {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 8px;
+  }
+
+  .review-images img {
+    width: 60px;
+    height: 60px;
   }
 }
 

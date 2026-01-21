@@ -127,7 +127,7 @@
 	display: inline-block;
 	transform: scaleX(-1);
 	opacity: 0.12;
-	margin-left: 2px;
+	margin-left: -12px;
 	letter-spacing: 3px;
 }
 

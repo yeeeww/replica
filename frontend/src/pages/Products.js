@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getProducts } from "../services/api";
+import { getProducts, getCategories } from "../services/api";
 import ProductCard from "../components/ProductCard";
 import "./Products.css";
 
@@ -13,11 +13,14 @@ const Products = () => {
 	const [loading, setLoading] = useState(true);
 	const [pagination, setPagination] = useState({});
 	const [sortOption, setSortOption] = useState("recent");
+	const [categoryTree, setCategoryTree] = useState([]);  // 3뎁스 카테고리 트리
+	const [selectedDepth2, setSelectedDepth2] = useState(null);  // 선택된 중분류
 
 	const category = searchParams.get("category") || "";
 	const search = searchParams.get("search") || "";
 	const page = parseInt(searchParams.get("page") || "1");
 
+	// 대분류 추출 (men, women, domestic 등)
 	const deriveMain = useMemo(() => {
 		const mainCategoryMap = {
 			bags: "bags",
@@ -36,6 +39,28 @@ const Products = () => {
 		const base = category.split("-")[0];
 		return mainCategoryMap[base] || base || "men";
 	}, [category]);
+
+	// 현재 선택된 중분류 추출 (men-bag, men-wallet 등)
+	const currentDepth2Slug = useMemo(() => {
+		if (!category) return null;
+		const parts = category.split("-");
+		if (parts.length >= 2) {
+			return `${parts[0]}-${parts[1]}`;
+		}
+		return null;
+	}, [category]);
+
+	// 카테고리 트리에서 현재 대분류 찾기
+	const currentMainCategory = useMemo(() => {
+		return categoryTree.find(cat => cat.slug === deriveMain);
+	}, [categoryTree, deriveMain]);
+
+	// 현재 중분류의 하위 카테고리(소분류) 찾기
+	const currentDepth3Categories = useMemo(() => {
+		if (!currentMainCategory || !selectedDepth2) return [];
+		const depth2Cat = currentMainCategory.children?.find(c => c.slug === selectedDepth2);
+		return depth2Cat?.children || [];
+	}, [currentMainCategory, selectedDepth2]);
 
 	const bannerByMain = {
 		bags:
@@ -76,103 +101,40 @@ const Products = () => {
 		notice: "NOTICE",
 	};
 
-	// 카테고리 아이콘 데이터
-	const categoryIcons = [
-		{ label: "하이엔드 의류", slug: "men-clothing", image: "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=200&h=200&fit=crop" },
-		{ label: "하이엔드 가방", slug: "men-bag", image: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=200&h=200&fit=crop" },
-		{ label: "하이엔드 신발", slug: "men-shoes", image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200&h=200&fit=crop" },
-		{ label: "하이엔드 시계", slug: "men-watch", image: "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=200&h=200&fit=crop" },
-		{ label: "하이엔드 지갑", slug: "men-wallet", image: "https://images.unsplash.com/photo-1627123424574-724758594e93?w=200&h=200&fit=crop" },
-		{ label: "하이엔드 벨트", slug: "men-belt", image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=200&h=200&fit=crop" },
-		{ label: "하이엔드 모자", slug: "men-hat", image: "https://images.unsplash.com/photo-1521369909029-2afed882baee?w=200&h=200&fit=crop" },
-		{ label: "하이엔드 ACC", slug: "men-accessory", image: "https://images.unsplash.com/photo-1611923134239-b9be5816e23c?w=200&h=200&fit=crop" },
-	];
-
-	const subcategories = {
-		men: [
-			{ label: "Show All", slug: "men" },
-			{ label: "가방", slug: "men-bag" },
-			{ label: "지갑", slug: "men-wallet" },
-			{ label: "시계", slug: "men-watch" },
-			{ label: "신발", slug: "men-shoes" },
-			{ label: "벨트", slug: "men-belt" },
-			{ label: "악세서리", slug: "men-accessory" },
-			{ label: "모자", slug: "men-hat" },
-			{ label: "의류", slug: "men-clothing" },
-			{ label: "선글라스&안경", slug: "men-glasses" },
-			{ label: "기타", slug: "men-etc" },
-		],
-		women: [
-			{ label: "전체", slug: "women" },
-			{ label: "가방", slug: "women-bag" },
-			{ label: "지갑", slug: "women-wallet" },
-			{ label: "시계", slug: "women-watch" },
-			{ label: "신발", slug: "women-shoes" },
-			{ label: "벨트", slug: "women-belt" },
-			{ label: "악세서리", slug: "women-accessory" },
-			{ label: "모자", slug: "women-hat" },
-			{ label: "의류", slug: "women-clothing" },
-			{ label: "선글라스&안경", slug: "women-glasses" },
-			{ label: "기타", slug: "women-etc" },
-		],
-		domestic: [
-			{ label: "전체", slug: "domestic" },
-			{ label: "가방&지갑", slug: "domestic-bag-wallet" },
-			{ label: "의류", slug: "domestic-clothing" },
-			{ label: "신발", slug: "domestic-shoes" },
-			{ label: "모자", slug: "domestic-hat" },
-			{ label: "악세사리", slug: "domestic-accessory" },
-			{ label: "시계", slug: "domestic-watch" },
-			{ label: "패션잡화", slug: "domestic-fashion-acc" },
-			{ label: "생활&주방용품", slug: "domestic-home-kitchen" },
-			{ label: "벨트", slug: "domestic-belt" },
-			{ label: "향수", slug: "domestic-perfume" },
-			{ label: "라이터", slug: "domestic-lighter" },
-		],
-		bags: [
-			{ label: "전체", slug: "bags" },
-			{ label: "백팩", slug: "bags-backpack" },
-			{ label: "크로스백", slug: "bags-cross" },
-			{ label: "지갑", slug: "bags-wallet" },
-			{ label: "토트/쇼퍼", slug: "bags-tote" },
-			{ label: "클러치", slug: "bags-clutch" },
-			{ label: "미니백", slug: "bags-mini" },
-		],
-		clothing: [
-			{ label: "전체", slug: "clothing" },
-			{ label: "아우터", slug: "clothing-outer" },
-			{ label: "탑/티셔츠", slug: "clothing-top" },
-			{ label: "셔츠", slug: "clothing-shirt" },
-			{ label: "니트", slug: "clothing-knit" },
-			{ label: "후드/맨투맨", slug: "clothing-hood" },
-			{ label: "팬츠", slug: "clothing-pants" },
-			{ label: "드레스", slug: "clothing-dress" },
-		],
-		shoes: [
-			{ label: "전체", slug: "shoes" },
-			{ label: "스니커즈", slug: "shoes-sneakers" },
-			{ label: "로퍼", slug: "shoes-loafer" },
-			{ label: "부츠", slug: "shoes-boots" },
-			{ label: "샌들/슬리퍼", slug: "shoes-sandal" },
-			{ label: "러닝/트레이너", slug: "shoes-runner" },
-		],
-		acc: [
-			{ label: "전체", slug: "acc" },
-			{ label: "시계", slug: "acc-watch" },
-			{ label: "모자", slug: "acc-cap" },
-			{ label: "벨트", slug: "acc-belt" },
-			{ label: "선글라스", slug: "acc-sunglasses" },
-			{ label: "주얼리", slug: "acc-jewelry" },
-			{ label: "기타", slug: "acc-etc" },
-		],
-		popular: [
-			{ label: "전체", slug: "popular" },
-			{ label: "가방", slug: "popular-bags" },
-			{ label: "의류", slug: "popular-clothing" },
-			{ label: "신발", slug: "popular-shoes" },
-			{ label: "ACC", slug: "popular-acc" },
-		],
+	// 중분류 카테고리 아이콘 이미지 매핑
+	const categoryIconImages = {
+		"clothing": "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=200&h=200&fit=crop",
+		"bag": "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=200&h=200&fit=crop",
+		"shoes": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200&h=200&fit=crop",
+		"watch": "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=200&h=200&fit=crop",
+		"wallet": "https://images.unsplash.com/photo-1627123424574-724758594e93?w=200&h=200&fit=crop",
+		"belt": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=200&h=200&fit=crop",
+		"hat": "https://images.unsplash.com/photo-1521369909029-2afed882baee?w=200&h=200&fit=crop",
+		"accessory": "https://images.unsplash.com/photo-1611923134239-b9be5816e23c?w=200&h=200&fit=crop",
+		"glasses": "https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=200&h=200&fit=crop",
+		"etc": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&h=200&fit=crop",
+		"bag-wallet": "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=200&h=200&fit=crop",
+		"fashion": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&h=200&fit=crop",
+		"home": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&h=200&fit=crop",
+		"perfume": "https://images.unsplash.com/photo-1541643600914-78b084683601?w=200&h=200&fit=crop",
+		"lighter": "https://images.unsplash.com/photo-1567197427669-a0d3603a3586?w=200&h=200&fit=crop",
 	};
+
+	// 현재 대분류의 중분류 목록 (카테고리 아이콘용)
+	const depth2Categories = useMemo(() => {
+		if (!currentMainCategory || !currentMainCategory.children) return [];
+		return currentMainCategory.children.map(cat => {
+			const parts = cat.slug.split("-");
+			const subType = parts.slice(1).join("-");
+			const image = categoryIconImages[subType] || categoryIconImages["etc"];
+			return {
+				...cat,
+				image,
+				label: `하이엔드 ${cat.name}`
+			};
+		});
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [currentMainCategory]);
 
 	const sortOptions = [
 		{ value: "recent", label: "등록순" },
@@ -183,6 +145,29 @@ const Products = () => {
 		{ value: "name-asc", label: "이름순" },
 		{ value: "name-desc", label: "이름역순" },
 	];
+
+	// 카테고리 트리 로드
+	useEffect(() => {
+		const fetchCategories = async () => {
+			try {
+				const response = await getCategories({ tree: true });
+				setCategoryTree(response.data.categories || []);
+			} catch (error) {
+				console.error("Failed to fetch categories:", error);
+			}
+		};
+		fetchCategories();
+	}, []);
+
+	// 선택된 중분류 동기화
+	useEffect(() => {
+		if (currentDepth2Slug) {
+			setSelectedDepth2(currentDepth2Slug);
+		} else if (deriveMain && !category.includes("-")) {
+			// 대분류만 선택된 경우, 첫 번째 중분류 선택
+			setSelectedDepth2(null);
+		}
+	}, [currentDepth2Slug, deriveMain, category]);
 
 	useEffect(() => {
 		fetchProducts();
@@ -278,37 +263,67 @@ const Products = () => {
 				</div>
 			</div>
 
-			{/* 카테고리 아이콘 그리드 (PC/모바일 공통) */}
-			<div className="products-cat-section">
-				<div className="products-cat-grid">
-					{categoryIcons.map((cat) => (
-						<button
-							key={cat.slug}
-							className={`products-cat-item ${category === cat.slug ? "active" : ""}`}
-							onClick={() => handleCategoryChange(cat.slug)}>
-							<div className="products-cat-img">
-								<img src={cat.image} alt={cat.label} />
-							</div>
-							<span>{cat.label}</span>
-						</button>
-					))}
+			{/* 중분류 카테고리 아이콘 그리드 (PC/모바일 공통) */}
+			{depth2Categories.length > 0 && (
+				<div className="products-cat-section">
+					<div className="products-cat-grid">
+						{depth2Categories.map((cat) => (
+							<button
+								key={cat.slug}
+								className={`products-cat-item ${selectedDepth2 === cat.slug || category === cat.slug ? "active" : ""}`}
+								onClick={() => {
+									setSelectedDepth2(cat.slug);
+									handleCategoryChange(cat.slug);
+								}}>
+								<div className="products-cat-img">
+									<img src={cat.image} alt={cat.label} />
+								</div>
+								<span>{cat.label}</span>
+							</button>
+						))}
+					</div>
 				</div>
-			</div>
+			)}
 
 			<div className="container">
-				{/* 하위 카테고리 바 (있는 경우만) */}
-				{(subcategories[deriveMain] || []).length > 0 && (
+				{/* 소분류 필터 (표 형태) - 중분류 선택 시 해당 브랜드/소분류 표시 */}
+				{selectedDepth2 && (
 					<div className="subcategory-bar">
-						{(subcategories[deriveMain] || []).map((item) => (
+						{/* Show All 버튼 */}
+						<button
+							className={`subcategory-btn ${category === selectedDepth2 ? "active" : ""}`}
+							onClick={() => handleCategoryChange(selectedDepth2)}>
+							Show All
+						</button>
+						{/* 소분류(브랜드 등) 목록 */}
+						{currentDepth3Categories.map((item) => (
 							<button
 								key={item.slug}
-								className={`subcategory-btn ${category === item.slug ? "active" : ""} ${
-									!category && item.label === "Show All" ? "active" : ""
-								}`}
-								onClick={() =>
-									handleCategoryChange(item.slug === deriveMain ? deriveMain : item.slug)
-								}>
-								{item.label}
+								className={`subcategory-btn ${category === item.slug ? "active" : ""}`}
+								onClick={() => handleCategoryChange(item.slug)}>
+								{item.name}
+							</button>
+						))}
+					</div>
+				)}
+
+				{/* 대분류만 선택된 경우 - 기존 중분류 필터 표시 */}
+				{!selectedDepth2 && currentMainCategory && (
+					<div className="subcategory-bar">
+						<button
+							className={`subcategory-btn ${category === deriveMain ? "active" : ""}`}
+							onClick={() => handleCategoryChange(deriveMain)}>
+							Show All
+						</button>
+						{(currentMainCategory.children || []).map((item) => (
+							<button
+								key={item.slug}
+								className={`subcategory-btn ${category === item.slug || category.startsWith(item.slug + "-") ? "active" : ""}`}
+								onClick={() => {
+									setSelectedDepth2(item.slug);
+									handleCategoryChange(item.slug);
+								}}>
+								{item.name}
 							</button>
 						))}
 					</div>

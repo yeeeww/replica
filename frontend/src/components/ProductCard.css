@@ -34,6 +34,15 @@
   text-align: left;
 }
 
+.product-category-path {
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .product-name {
   font-size: 14px;
   font-weight: 400;
@@ -48,11 +57,18 @@
 }
 
 .product-dept-price {
-  font-size: 15px;
-  font-weight: 500;
-  color: #888;
+  font-size: 13px;
+  color: #999;
   margin-bottom: 4px;
-  margin-left:-8px;
+  text-decoration: line-through;
+}
+
+.product-dept-price .dept-label {
+  margin-right: 6px;
+}
+
+.product-dept-price .dept-value {
+  color: #999;
 }
 
 .product-price {
@@ -60,6 +76,20 @@
   font-weight: 700;
   color: #000;
   margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.product-price .price-label {
+  font-weight: 500;
+  color: #666;
+  font-size: 13px;
+}
+
+.product-price .price-value {
+  color: #e74c3c;
+  font-weight: 700;
 }
 
 .product-badge-new {
