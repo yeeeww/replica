@@ -12,6 +12,7 @@ const initDatabase = async () => {
       DROP TABLE IF EXISTS order_items CASCADE;
       DROP TABLE IF EXISTS orders CASCADE;
       DROP TABLE IF EXISTS cart_items CASCADE;
+      DROP TABLE IF EXISTS product_options CASCADE;
       DROP TABLE IF EXISTS products CASCADE;
       DROP TABLE IF EXISTS categories CASCADE;
       DROP TABLE IF EXISTS users CASCADE;
@@ -30,12 +31,14 @@ const initDatabase = async () => {
       );
     `);
 
-    // Create categories table
+    // Create categories table (3뎁스 지원: 대분류 > 중분류 > 소분류)
     await client.query(`
       CREATE TABLE categories (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         slug VARCHAR(255) UNIQUE NOT NULL,
+        parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+        depth INTEGER DEFAULT 1,
         description TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -48,6 +51,7 @@ const initDatabase = async () => {
         name VARCHAR(255) NOT NULL,
         description TEXT,
         price DECIMAL(10, 2) NOT NULL,
+        department_price DECIMAL(10, 2),
         category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
         image_url TEXT,
         stock INTEGER DEFAULT 0,
@@ -57,15 +61,32 @@ const initDatabase = async () => {
       );
     `);
 
+    // Create product_options table (사이즈, 컬러 등 옵션)
+    await client.query(`
+      CREATE TABLE product_options (
+        id SERIAL PRIMARY KEY,
+        product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+        option_name VARCHAR(100) NOT NULL,
+        option_value VARCHAR(255) NOT NULL,
+        price_adjustment DECIMAL(10, 2) DEFAULT 0,
+        stock INTEGER DEFAULT 0,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(product_id, option_name, option_value)
+      );
+    `);
+
     // Create cart_items table
     await client.query(`
       CREATE TABLE cart_items (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+        product_option_id INTEGER REFERENCES product_options(id) ON DELETE SET NULL,
+        selected_options TEXT,
         quantity INTEGER NOT NULL DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user_id, product_id)
+        UNIQUE(user_id, product_id, product_option_id)
       );
     `);
 
@@ -93,8 +114,24 @@ const initDatabase = async () => {
         product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
         product_name VARCHAR(255) NOT NULL,
         product_price DECIMAL(10, 2) NOT NULL,
+        selected_options TEXT,
         quantity INTEGER NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Create reviews table (구매평)
+    await client.query(`
+      CREATE TABLE reviews (
+        id SERIAL PRIMARY KEY,
+        product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+        content TEXT NOT NULL,
+        images TEXT,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
