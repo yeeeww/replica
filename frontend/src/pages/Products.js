@@ -120,6 +120,35 @@ const Products = () => {
 		"lighter": "https://images.unsplash.com/photo-1567197427669-a0d3603a3586?w=200&h=200&fit=crop",
 	};
 
+	// 중분류 한글 이름 매핑
+	const categoryKoreanNames = {
+		"bag": "가방",
+		"wallet": "지갑",
+		"bag-wallet": "가방&지갑",
+		"watch": "시계",
+		"shoes": "신발",
+		"belt": "벨트",
+		"accessory": "악세사리",
+		"hat": "모자",
+		"clothing": "의류",
+		"glasses": "안경",
+		"etc": "기타",
+		"fashion": "패션잡화",
+		"home": "생활&주방용품",
+		"perfume": "향수",
+		"lighter": "라이터",
+	};
+
+	// slug에서 한글 이름 가져오기
+	const getKoreanCategoryName = (slug, originalName) => {
+		// 이미 한글이면 그대로
+		if (/[가-힣]/.test(originalName)) return originalName;
+		
+		const parts = slug.split("-");
+		const subType = parts.slice(1).join("-");
+		return categoryKoreanNames[subType] || originalName;
+	};
+
 	// 현재 대분류의 중분류 목록 (카테고리 아이콘용)
 	const depth2Categories = useMemo(() => {
 		if (!currentMainCategory || !currentMainCategory.children) return [];
@@ -127,10 +156,11 @@ const Products = () => {
 			const parts = cat.slug.split("-");
 			const subType = parts.slice(1).join("-");
 			const image = categoryIconImages[subType] || categoryIconImages["etc"];
+			const koreanName = getKoreanCategoryName(cat.slug, cat.name);
 			return {
 				...cat,
 				image,
-				label: `하이엔드 ${cat.name}`
+				label: `하이엔드 ${koreanName}`
 			};
 		});
 		// eslint-disable-next-line react-hooks/exhaustive-deps
@@ -151,7 +181,10 @@ const Products = () => {
 		const fetchCategories = async () => {
 			try {
 				const response = await getCategories({ tree: true });
-				setCategoryTree(response.data.categories || []);
+				const tree = response.data.categories || [];
+				console.log('Category tree loaded:', tree);
+				console.log('Men category:', tree.find(c => c.slug === 'men'));
+				setCategoryTree(tree);
 			} catch (error) {
 				console.error("Failed to fetch categories:", error);
 			}
@@ -286,7 +319,7 @@ const Products = () => {
 			)}
 
 			<div className="container">
-				{/* 소분류 필터 (표 형태) - 중분류 선택 시 해당 브랜드/소분류 표시 */}
+				{/* 소분류/브랜드 필터 (표 형태) - 항상 3뎁스(브랜드) 표시 */}
 				{selectedDepth2 && (
 					<div className="subcategory-bar">
 						{/* Show All 버튼 */}
@@ -296,36 +329,16 @@ const Products = () => {
 							Show All
 						</button>
 						{/* 소분류(브랜드 등) 목록 */}
-						{currentDepth3Categories.map((item) => (
-							<button
-								key={item.slug}
-								className={`subcategory-btn ${category === item.slug ? "active" : ""}`}
-								onClick={() => handleCategoryChange(item.slug)}>
-								{item.name}
-							</button>
-						))}
-					</div>
-				)}
-
-				{/* 대분류만 선택된 경우 - 기존 중분류 필터 표시 */}
-				{!selectedDepth2 && currentMainCategory && (
-					<div className="subcategory-bar">
-						<button
-							className={`subcategory-btn ${category === deriveMain ? "active" : ""}`}
-							onClick={() => handleCategoryChange(deriveMain)}>
-							Show All
-						</button>
-						{(currentMainCategory.children || []).map((item) => (
-							<button
-								key={item.slug}
-								className={`subcategory-btn ${category === item.slug || category.startsWith(item.slug + "-") ? "active" : ""}`}
-								onClick={() => {
-									setSelectedDepth2(item.slug);
-									handleCategoryChange(item.slug);
-								}}>
-								{item.name}
-							</button>
-						))}
+						{currentDepth3Categories.length > 0 && (
+							currentDepth3Categories.map((item) => (
+								<button
+									key={item.slug}
+									className={`subcategory-btn ${category === item.slug ? "active" : ""}`}
+									onClick={() => handleCategoryChange(item.slug)}>
+									{item.name}
+								</button>
+							))
+						) }
 					</div>
 				)}
 

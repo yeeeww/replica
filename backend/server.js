@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -9,6 +10,9 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// 정적 파일 서빙 (업로드된 이미지)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Request logging
 app.use((req, res, next) => {
@@ -25,6 +29,7 @@ app.use('/api/orders', require('./routes/orders'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/notices', require('./routes/notices'));
 app.use('/api/reviews', require('./routes/reviews'));
+app.use('/api/upload', require('./routes/upload'));
 
 // Health check
 app.get('/api/health', (req, res) => {

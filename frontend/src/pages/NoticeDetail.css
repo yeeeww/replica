@@ -41,6 +41,120 @@
   justify-content: center;
 }
 
+/* 첨부파일 */
+.notice-attachments {
+  margin-top: 32px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.notice-attachments h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+.notice-attachments ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.notice-attachments li {
+  padding: 8px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.notice-attachments li:last-child {
+  border-bottom: none;
+}
+
+.notice-attachments a {
+  color: #007bff;
+  text-decoration: none;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notice-attachments a:hover {
+  text-decoration: underline;
+}
+
+.notice-attachments .file-size {
+  color: #888;
+  font-size: 12px;
+}
+
+/* 본문 HTML 스타일 */
+.notice-content-body h1,
+.notice-content-body h2,
+.notice-content-body h3 {
+  margin: 20px 0 12px;
+  font-weight: 600;
+}
+
+.notice-content-body h1 {
+  font-size: 24px;
+}
+
+.notice-content-body h2 {
+  font-size: 20px;
+}
+
+.notice-content-body h3 {
+  font-size: 18px;
+}
+
+.notice-content-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+.notice-content-body a {
+  color: #007bff;
+  text-decoration: underline;
+}
+
+.notice-content-body blockquote {
+  border-left: 4px solid #ddd;
+  padding-left: 16px;
+  margin: 16px 0;
+  color: #666;
+  font-style: italic;
+}
+
+.notice-content-body pre {
+  background: #f5f5f5;
+  padding: 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+}
+
+.notice-content-body ul,
+.notice-content-body ol {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.notice-content-body li {
+  margin: 4px 0;
+}
+
+.notice-content-body hr {
+  border: none;
+  border-top: 1px solid #ddd;
+  margin: 24px 0;
+}
+
 .notice-not-found {
   text-align: center;
   padding: 80px 20px;

@@ -25,19 +25,41 @@ const initDatabase = async () => {
         email VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         name VARCHAR(255) NOT NULL,
+        phone VARCHAR(50),
         role VARCHAR(50) DEFAULT 'user',
+        points INTEGER DEFAULT 0,
+        address TEXT,
+        memo TEXT,
+        is_active BOOLEAN DEFAULT true,
+        last_login_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
+    // Create points_history table
+    await client.query(`
+      CREATE TABLE points_history (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        amount INTEGER NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        description TEXT,
+        order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+        admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // Create categories table (3뎁스 지원: 대분류 > 중분류 > 소분류)
+    // parent_slug: 고정된 대분류-중분류 slug (예: men-wallet, women-bag)
     await client.query(`
       CREATE TABLE categories (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         slug VARCHAR(255) UNIQUE NOT NULL,
         parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+        parent_slug VARCHAR(255),
         depth INTEGER DEFAULT 1,
         description TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -98,9 +120,17 @@ const initDatabase = async () => {
         total_amount DECIMAL(10, 2) NOT NULL,
         status VARCHAR(50) DEFAULT 'pending',
         tracking_number VARCHAR(100),
+        shipping_carrier VARCHAR(100),
         shipping_address TEXT NOT NULL,
         shipping_name VARCHAR(255) NOT NULL,
         shipping_phone VARCHAR(50) NOT NULL,
+        orderer_name VARCHAR(255),
+        orderer_phone VARCHAR(50),
+        orderer_email VARCHAR(255),
+        customs_id VARCHAR(50),
+        shipping_memo TEXT,
+        depositor_name VARCHAR(255),
+        admin_memo TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -153,31 +183,66 @@ const initDatabase = async () => {
 
     console.log('✅ Default users created');
 
-    // Insert sample categories
+    // ========== 대분류 (depth 1) ==========
     await client.query(`
-      INSERT INTO categories (name, slug, description) VALUES
-      ('의류', 'clothing', '패션 의류'),
-      ('가방', 'bags', '핸드백 및 백팩'),
-      ('신발', 'shoes', '스니커즈 및 구두'),
-      ('액세서리', 'accessories', '시계, 지갑 등');
+      INSERT INTO categories (name, slug, depth, description) VALUES
+      ('남성', 'men', 1, '남성 카테고리'),
+      ('여성', 'women', 1, '여성 카테고리'),
+      ('국내출고상품', 'domestic', 1, '국내출고상품'),
+      ('추천상품', 'recommend', 1, '추천상품'),
+      ('히트상품', 'hot', 1, '히트상품'),
+      ('인기상품', 'popular', 1, '인기상품');
     `);
+    console.log('✅ 대분류 카테고리 생성 완료');
 
-    console.log('✅ Sample categories created');
+    // ========== 중분류 (depth 2) - 남성/여성/추천/히트/인기 공통 ==========
+    const commonSubcategories = [
+      { name: '가방', slug: 'bag' },
+      { name: '지갑', slug: 'wallet' },
+      { name: '시계', slug: 'watch' },
+      { name: '신발', slug: 'shoes' },
+      { name: '벨트', slug: 'belt' },
+      { name: '악세서리', slug: 'accessory' },
+      { name: '모자', slug: 'hat' },
+      { name: '의류', slug: 'clothing' },
+      { name: '선글라스&안경', slug: 'glasses' },
+      { name: '기타', slug: 'etc' }
+    ];
 
-    // Insert sample products
-    await client.query(`
-      INSERT INTO products (name, description, price, category_id, image_url, stock) VALUES
-      ('클래식 티셔츠', '편안한 면 소재의 클래식 티셔츠', 29000, 1, 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500', 50),
-      ('데님 재킷', '빈티지 스타일의 데님 재킷', 89000, 1, 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500', 30),
-      ('레더 백팩', '고급 가죽 백팩', 159000, 2, 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500', 20),
-      ('크로스백', '실용적인 크로스백', 79000, 2, 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500', 40),
-      ('스니커즈', '편안한 캐주얼 스니커즈', 119000, 3, 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=500', 60),
-      ('로퍼', '클래식 레더 로퍼', 139000, 3, 'https://images.unsplash.com/photo-1533867617858-e7b97e060509?w=500', 25),
-      ('레더 지갑', '심플한 디자인의 지갑', 49000, 4, 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=500', 80),
-      ('선글라스', '클래식 선글라스', 69000, 4, 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=500', 45);
-    `);
+    // 남성, 여성, 추천상품, 히트상품, 인기상품에 공통 중분류 추가
+    const parentSlugs = ['men', 'women', 'recommend', 'hot', 'popular'];
+    for (const parentSlug of parentSlugs) {
+      for (const sub of commonSubcategories) {
+        await client.query(`
+          INSERT INTO categories (name, slug, parent_slug, depth) 
+          VALUES ($1, $2, $3, 2)
+        `, [sub.name, `${parentSlug}-${sub.slug}`, parentSlug]);
+      }
+    }
+    console.log('✅ 남성/여성/추천/히트/인기 중분류 생성 완료');
 
-    console.log('✅ Sample products created');
+    // ========== 중분류 (depth 2) - 국내출고상품 전용 ==========
+    const domesticSubcategories = [
+      { name: '가방&지갑', slug: 'bag-wallet' },
+      { name: '의류', slug: 'clothing' },
+      { name: '신발', slug: 'shoes' },
+      { name: '모자', slug: 'hat' },
+      { name: '악세사리', slug: 'accessory' },
+      { name: '시계', slug: 'watch' },
+      { name: '패션잡화', slug: 'fashion-acc' },
+      { name: '생활&주방용품', slug: 'home-kitchen' },
+      { name: '벨트', slug: 'belt' },
+      { name: '향수', slug: 'perfume' },
+      { name: '라이터', slug: 'lighter' }
+    ];
+
+    for (const sub of domesticSubcategories) {
+      await client.query(`
+        INSERT INTO categories (name, slug, parent_slug, depth) 
+        VALUES ($1, $2, 'domestic', 2)
+      `, [sub.name, `domestic-${sub.slug}`]);
+    }
+    console.log('✅ 국내출고상품 중분류 생성 완료');
     console.log('\n🎉 Database initialized successfully!');
     console.log('\n📝 Default accounts:');
     console.log('   Admin: admin@shop.com / admin123');

@@ -24,6 +24,24 @@ const NoticeDetail = () => {
     fetchNotice();
   }, [fetchNotice]);
 
+  // 파일 크기 포맷
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  // 첨부파일 파싱
+  const getAttachments = () => {
+    if (!notice?.attachments) return [];
+    try {
+      return JSON.parse(notice.attachments);
+    } catch {
+      return [];
+    }
+  };
+
   if (loading) {
     return <div className="container loading">공지사항을 불러오는 중...</div>;
   }
@@ -41,6 +59,8 @@ const NoticeDetail = () => {
     );
   }
 
+  const attachments = getAttachments();
+
   return (
     <div className="notice-detail-page">
       <div className="container">
@@ -56,9 +76,31 @@ const NoticeDetail = () => {
         <div className="notice-detail-content">
           <div 
             className="notice-content-body"
-            dangerouslySetInnerHTML={{ __html: notice.content.replace(/\n/g, '<br/>') }}
+            dangerouslySetInnerHTML={{ __html: notice.content }}
           />
         </div>
+
+        {/* 첨부파일 */}
+        {attachments.length > 0 && (
+          <div className="notice-attachments">
+            <h3>📎 첨부파일</h3>
+            <ul>
+              {attachments.map((file, index) => (
+                <li key={index}>
+                  <a 
+                    href={file.url} 
+                    download={file.name}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    📄 {file.name}
+                    {file.size && <span className="file-size">({formatFileSize(file.size)})</span>}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="notice-detail-footer">
           <Link to="/notices" className="btn btn-secondary">목록으로</Link>

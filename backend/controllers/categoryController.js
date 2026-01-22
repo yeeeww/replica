@@ -21,14 +21,14 @@ exports.getCategories = async (req, res) => {
     const { tree } = req.query;  // ?tree=true 면 계층 구조로 반환
 
     const result = await client.query(`
-      SELECT c.*, 
+      SELECT c.id, c.name, c.slug, c.parent_id, c.depth, c.description, c.created_at,
+             c.parent_slug,
              COUNT(p.id) as product_count,
-             pc.name as parent_name,
-             pc.slug as parent_slug
+             pc.name as parent_name
       FROM categories c
       LEFT JOIN products p ON c.id = p.category_id AND p.is_active = true
       LEFT JOIN categories pc ON c.parent_id = pc.id
-      GROUP BY c.id, pc.name, pc.slug
+      GROUP BY c.id, c.name, c.slug, c.parent_id, c.depth, c.description, c.created_at, c.parent_slug, pc.name
       ORDER BY c.depth, c.name
     `);
 
@@ -45,21 +45,31 @@ exports.getCategories = async (req, res) => {
     }));
 
     if (tree === 'true') {
-      // 계층 구조로 변환
-      const treeMap = {};
+      // 계층 구조로 변환 (parent_slug 기반)
+      const slugMap = {};
       const rootCategories = [];
 
-      // 모든 카테고리를 맵에 저장
+      // 모든 카테고리를 slug 기준으로 맵에 저장
       categoriesWithPath.forEach(cat => {
-        treeMap[cat.id] = { ...cat, children: [] };
+        slugMap[cat.slug] = { ...cat, children: [] };
       });
 
-      // 부모-자식 관계 설정
+      // 부모-자식 관계 설정 (parent_slug 또는 parent_id 기반)
       categoriesWithPath.forEach(cat => {
-        if (cat.parent_id && treeMap[cat.parent_id]) {
-          treeMap[cat.parent_id].children.push(treeMap[cat.id]);
-        } else if (!cat.parent_id) {
-          rootCategories.push(treeMap[cat.id]);
+        // depth 1은 루트
+        if (cat.depth === 1 || (!cat.parent_slug && !cat.parent_id)) {
+          rootCategories.push(slugMap[cat.slug]);
+        } 
+        // parent_slug가 있으면 해당 부모의 children에 추가
+        else if (cat.parent_slug && slugMap[cat.parent_slug]) {
+          slugMap[cat.parent_slug].children.push(slugMap[cat.slug]);
+        }
+        // parent_id가 있으면 해당 부모의 children에 추가
+        else if (cat.parent_id) {
+          const parentCat = categoriesWithPath.find(c => c.id === cat.parent_id);
+          if (parentCat && slugMap[parentCat.slug]) {
+            slugMap[parentCat.slug].children.push(slugMap[cat.slug]);
+          }
         }
       });
 
@@ -88,27 +98,41 @@ function buildCategoryFullPathSync(categoryMap, catId) {
   return pathParts.join(' > ');
 }
 
-// 카테고리 생성 (관리자)
+// 카테고리 생성 (관리자) - 대분류/중분류/소분류 모두 지원
 exports.createCategory = async (req, res) => {
   const client = await pool.connect();
   
   try {
-    const { name, slug, description, parent_id } = req.body;
+    const { name, slug, description, parent_id, parent_slug, depth: requestedDepth } = req.body;
 
-    // depth 계산
+    console.log('Create category request:', { name, slug, parent_slug, requestedDepth });
+
+    // depth 결정: 요청에서 직접 지정된 경우 사용
     let depth = 1;
-    if (parent_id) {
+    let finalParentId = parent_id || null;
+
+    // 요청에서 depth가 명시적으로 지정된 경우
+    if (requestedDepth !== undefined && requestedDepth !== null) {
+      depth = parseInt(requestedDepth);
+    } else if (parent_slug) {
+      // parent_slug가 있으면 depth 계산
+      // parent_slug가 'men'이면 depth 2, 'men-bag'이면 depth 3
+      const hyphenCount = (parent_slug.match(/-/g) || []).length;
+      depth = hyphenCount + 2;
+    } else if (parent_id) {
       const parentResult = await client.query('SELECT depth FROM categories WHERE id = $1', [parent_id]);
       if (parentResult.rows.length > 0) {
         depth = parentResult.rows[0].depth + 1;
       }
     }
 
+    console.log('Final depth:', depth, 'parent_slug:', parent_slug);
+
     const result = await client.query(`
-      INSERT INTO categories (name, slug, parent_id, depth, description)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO categories (name, slug, parent_id, parent_slug, depth, description)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
-    `, [name, slug, parent_id || null, depth, description]);
+    `, [name, slug, finalParentId, parent_slug || null, depth, description]);
 
     res.status(201).json({
       message: '카테고리가 생성되었습니다.',
@@ -131,23 +155,29 @@ exports.updateCategory = async (req, res) => {
   
   try {
     const { id } = req.params;
-    const { name, slug, description, parent_id } = req.body;
+    const { name, slug, description, parent_id, parent_slug, depth: requestedDepth } = req.body;
 
-    // depth 계산
-    let depth = 1;
-    if (parent_id) {
-      const parentResult = await client.query('SELECT depth FROM categories WHERE id = $1', [parent_id]);
-      if (parentResult.rows.length > 0) {
-        depth = parentResult.rows[0].depth + 1;
+    // depth 결정
+    let depth = requestedDepth || 1;
+    
+    if (!requestedDepth) {
+      if (parent_slug) {
+        const hyphenCount = (parent_slug.match(/-/g) || []).length;
+        depth = hyphenCount + 2;
+      } else if (parent_id) {
+        const parentResult = await client.query('SELECT depth FROM categories WHERE id = $1', [parent_id]);
+        if (parentResult.rows.length > 0) {
+          depth = parentResult.rows[0].depth + 1;
+        }
       }
     }
 
     const result = await client.query(`
       UPDATE categories
-      SET name = $1, slug = $2, description = $3, parent_id = $4, depth = $5
-      WHERE id = $6
+      SET name = $1, slug = $2, description = $3, parent_id = $4, parent_slug = $5, depth = $6
+      WHERE id = $7
       RETURNING *
-    `, [name, slug, description, parent_id || null, depth, id]);
+    `, [name, slug, description, parent_id || null, parent_slug || null, depth, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: '카테고리를 찾을 수 없습니다.' });

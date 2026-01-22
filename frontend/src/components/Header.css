@@ -286,7 +286,7 @@
 .mobile-logo {
 	display: flex;
 	align-items: center;
-	font-size: 24px;
+	font-size: 18px;
 	font-weight: 900;
 	letter-spacing: -1px;
 	color: #000;
@@ -294,8 +294,8 @@
 }
 
 .mobile-logo .logo-text-mirror {
-	font-size: 24px;
-	margin-left: -4px;
+	font-size: 18px;
+	margin-left: -3px;
 }
 
 .mobile-search-btn {

@@ -110,6 +110,7 @@
 	grid-template-columns: repeat(4, 1fr);
 	border: 1px solid #ddd;
 	margin: 30px 0;
+	border-bottom: 1px solid #eee;
 }
 
 .subcategory-btn {
@@ -130,10 +131,7 @@
 	border-right: none;
 }
 
-/* 마지막 줄 border-bottom 제거 */
-.subcategory-btn:nth-last-child(-n+4) {
-	border-bottom: none;
-}
+/* 마지막 줄에도 border-bottom 유지 */
 
 .subcategory-btn.active {
 	background: #f5f5f5;
@@ -144,6 +142,14 @@
 .subcategory-btn:hover {
 	background: #f9f9f9;
 	color: #000;
+}
+
+.no-brands {
+	padding: 14px 10px;
+	color: #999;
+	font-size: 14px;
+	text-align: center;
+	grid-column: span 4;
 }
 
 .weekly-best {
@@ -255,6 +261,12 @@
 
 .products-grid {
 	row-gap: 26px;
+}
+
+/* 상품 카드 하단 보더 */
+.products-grid .product-card {
+	padding-bottom: 20px;
+	border-bottom: 1px solid #eee;
 }
 
 .product-card-with-price {
@@ -444,6 +456,7 @@
 		margin: 0;
 		border: none;
 		border-top: 1px solid #eee;
+		border-bottom: 1px solid #eee;
 	}
 
 	.subcategory-btn {

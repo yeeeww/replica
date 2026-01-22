@@ -51,6 +51,12 @@ const AdminDashboard = () => {
             공지사항 관리
           </Link>
           <Link 
+            to="/admin/featured" 
+            className={isActive('/admin/featured') ? 'active' : ''}
+          >
+            추천/히트/인기 상품
+          </Link>
+          <Link 
             to="/admin/crawler" 
             className={isActive('/admin/crawler') ? 'active' : ''}
           >

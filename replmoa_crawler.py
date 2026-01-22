@@ -366,15 +366,21 @@ def main() -> None:
         )
         return slug or "etc"
 
-    def ensure_category_single(name: str, slug: str, parent_id: int = None, depth: int = 1) -> int:
+    def ensure_category_single(name: str, slug: str, parent_id: int = None, parent_slug: str = None, depth: int = 1) -> int:
         """단일 카테고리를 생성하거나 기존 것을 반환"""
         cur.execute("SELECT id FROM categories WHERE slug=%s", (slug,))
         row = cur.fetchone()
         if row:
+            # 기존 카테고리의 parent_slug가 비어있으면 업데이트
+            if parent_slug:
+                cur.execute(
+                    "UPDATE categories SET parent_slug=%s WHERE slug=%s AND (parent_slug IS NULL OR parent_slug = '')",
+                    (parent_slug, slug)
+                )
             return row["id"]
         cur.execute(
-            "INSERT INTO categories (name, slug, parent_id, depth, description) VALUES (%s, %s, %s, %s, %s) RETURNING id",
-            (name, slug, parent_id, depth, "imported from crawler"),
+            "INSERT INTO categories (name, slug, parent_id, parent_slug, depth, description) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
+            (name, slug, parent_id, parent_slug, depth, "imported from crawler"),
         )
         return cur.fetchone()["id"]
 
@@ -383,26 +389,29 @@ def main() -> None:
         cat_info = normalize_category_3depth(cat_raw)
         
         parent_id = None
+        parent_slug = None
         final_id = None
         
         # depth1 (대분류)
         if cat_info["depth1"]:
             d1 = cat_info["depth1"]
-            parent_id = ensure_category_single(d1["name"], d1["slug"], None, 1)
+            parent_id = ensure_category_single(d1["name"], d1["slug"], None, None, 1)
+            parent_slug = d1["slug"]
             final_id = parent_id
         
         # depth2 (중분류)
         if cat_info["depth2"]:
             d2 = cat_info["depth2"]
-            parent_id = ensure_category_single(d2["name"], d2["slug"], parent_id, 2)
+            parent_id = ensure_category_single(d2["name"], d2["slug"], parent_id, parent_slug, 2)
+            parent_slug = d2["slug"]
             final_id = parent_id
         
         # depth3 (소분류 - 브랜드 등)
         if cat_info["depth3"]:
             d3 = cat_info["depth3"]
-            final_id = ensure_category_single(d3["name"], d3["slug"], parent_id, 3)
+            final_id = ensure_category_single(d3["name"], d3["slug"], parent_id, parent_slug, 3)
         
-        return final_id or ensure_category_single("기타", "etc", None, 1)
+        return final_id or ensure_category_single("기타", "etc", None, None, 1)
 
     def ensure_category(name: str, slug: str) -> int:
         """기존 호환용"""

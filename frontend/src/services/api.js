@@ -24,8 +24,18 @@ export const createOrder = (data) => axios.post(`/orders`, data);
 export const updateOrderStatus = (id, data) =>
 	axios.patch(`/orders/${id}/status`, data);
 
-// Admin
-export const getUsers = () => axios.get(`/admin/users`);
+// Admin - Users
+export const getUsers = (params) => axios.get(`/admin/users`, { params });
+export const getUser = (id) => axios.get(`/admin/users/${id}`);
+export const updateUser = (id, data) => axios.put(`/admin/users/${id}`, data);
+export const updateUserPoints = (id, data) => axios.post(`/admin/users/${id}/points`, data);
+
+// Admin - Featured Products (추천/히트/인기)
+export const getFeaturedProducts = (type) => axios.get(`/admin/featured/${type}`);
+export const searchProductsForFeatured = (params) => axios.get(`/admin/featured-search`, { params });
+export const addFeaturedProduct = (type, productId) => axios.post(`/admin/featured/${type}/${productId}`);
+export const removeFeaturedProduct = (type, productId) => axios.delete(`/admin/featured/${type}/${productId}`);
+export const updateFeaturedOrder = (type, productIds) => axios.put(`/admin/featured/${type}/order`, { productIds });
 
 // Notices (공지사항)
 export const getNotices = (params) => axios.get(`/notices`, { params });
@@ -47,3 +57,20 @@ export const startCrawl = (data) => axios.post(`/admin/crawl/start`, data);
 export const stopCrawl = () => axios.post(`/admin/crawl/stop`);
 export const getCrawlStatus = () => axios.get(`/admin/crawl/status`);
 export const clearCrawlLogs = () => axios.post(`/admin/crawl/clear-logs`);
+
+// Upload (파일 업로드)
+export const uploadImage = (file) => {
+  const formData = new FormData();
+  formData.append('image', file);
+  return axios.post(`/upload/image`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+};
+
+export const uploadImages = (files) => {
+  const formData = new FormData();
+  files.forEach(file => formData.append('images', file));
+  return axios.post(`/upload/images`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+};

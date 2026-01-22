@@ -48,11 +48,15 @@ exports.getProducts = async (req, res) => {
     const params = [];
     let paramCount = 0;
 
-    const skipCategoryFilter = ["recommend", "hot", "popular"].includes(
-      (category || "").toLowerCase()
-    );
-
-    if (category && !skipCategoryFilter) {
+    // 추천/히트/인기 상품 필터링
+    const featuredType = (category || "").toLowerCase();
+    if (featuredType === "recommend") {
+      query += ` AND p.is_recommended = true`;
+    } else if (featuredType === "hot") {
+      query += ` AND p.is_hot = true`;
+    } else if (featuredType === "popular") {
+      query += ` AND p.is_popular = true`;
+    } else if (category) {
       paramCount++;
       // 카테고리 일치 또는 하위카테고리(접두어)까지 포함
       query += ` AND (c.slug = $${paramCount} OR c.slug LIKE ($${paramCount} || '-%'))`;
@@ -72,8 +76,12 @@ exports.getProducts = async (req, res) => {
     );
     const total = parseInt(countResult.rows[0].count);
 
-    // 상품 조회
-    query += ` ORDER BY p.created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
+    // 상품 조회 - 추천/히트/인기상품은 featured_order로 정렬
+    if (["recommend", "hot", "popular"].includes(featuredType)) {
+      query += ` ORDER BY p.featured_order ASC, p.created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
+    } else {
+      query += ` ORDER BY p.created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
+    }
     params.push(limit, offset);
 
     const result = await client.query(query, params);

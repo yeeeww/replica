@@ -1,8 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { getCategories } from '../services/api';
 import './Header.css';
+
+// 카테고리 영문 slug -> 한글 이름 매핑
+const categoryNameMap = {
+  // 대분류
+  'men': '남성',
+  'women': '여성',
+  'domestic': '국내출고상품',
+  'recommend': '추천상품',
+  'hot': '히트상품',
+  'popular': '인기상품',
+  'notice': '공지사항',
+  // 중분류
+  'bag': '가방',
+  'wallet': '지갑',
+  'bag-wallet': '가방&지갑',
+  'watch': '시계',
+  'shoes': '신발',
+  'belt': '벨트',
+  'accessory': '악세사리',
+  'hat': '모자',
+  'clothing': '의류',
+  'glasses': '선글라스&안경',
+  'etc': '기타',
+  'fashion': '패션잡화',
+  'fashion-acc': '패션잡화',
+  'home': '생활&주방용품',
+  'home-kitchen': '생활&주방용품',
+  'perfume': '향수',
+  'lighter': '라이터',
+};
+
+// slug에서 한글 이름 추출
+const getKoreanName = (slug, originalName) => {
+  // 이미 한글이면 그대로 반환
+  if (/[가-힣]/.test(originalName)) {
+    return originalName;
+  }
+  
+  // 대분류 매핑 체크
+  if (categoryNameMap[slug]) {
+    return categoryNameMap[slug];
+  }
+  
+  // 중분류: men-bag -> bag 부분 추출
+  const parts = slug.split('-');
+  if (parts.length >= 2) {
+    const subType = parts.slice(1).join('-');
+    if (categoryNameMap[subType]) {
+      return categoryNameMap[subType];
+    }
+  }
+  
+  return originalName;
+};
 
 const Header = () => {
   const { user, logout, isAdmin } = useAuth();
@@ -11,6 +66,20 @@ const Header = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openSubmenu, setOpenSubmenu] = useState(null);
+  const [allCategories, setAllCategories] = useState([]);
+
+  // DB에서 카테고리 불러오기
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await getCategories();
+        setAllCategories(response.data.categories || []);
+      } catch (error) {
+        console.error('카테고리 로딩 실패:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -24,61 +93,52 @@ const Header = () => {
     }
   };
 
-  const menuConfig = [
-    {
-      label: '남성',
-      slug: 'men',
-      children: [
-        { label: '가방', slug: 'men-bag' },
-        { label: '지갑', slug: 'men-wallet' },
-        { label: '시계', slug: 'men-watch' },
-        { label: '신발', slug: 'men-shoes' },
-        { label: '벨트', slug: 'men-belt' },
-        { label: '악세서리', slug: 'men-accessory' },
-        { label: '모자', slug: 'men-hat' },
-        { label: '의류', slug: 'men-clothing' },
-        { label: '선글라스&안경', slug: 'men-glasses' },
-        { label: '기타', slug: 'men-etc' },
-      ],
-    },
-    {
-      label: '여성',
-      slug: 'women',
-      children: [
-        { label: '가방', slug: 'women-bag' },
-        { label: '지갑', slug: 'women-wallet' },
-        { label: '시계', slug: 'women-watch' },
-        { label: '신발', slug: 'women-shoes' },
-        { label: '벨트', slug: 'women-belt' },
-        { label: '악세서리', slug: 'women-accessory' },
-        { label: '모자', slug: 'women-hat' },
-        { label: '의류', slug: 'women-clothing' },
-        { label: '선글라스&안경', slug: 'women-glasses' },
-        { label: '기타', slug: 'women-etc' },
-      ],
-    },
-    {
-      label: '국내출고상품',
-      slug: 'domestic',
-      children: [
-        { label: '가방&지갑', slug: 'domestic-bag-wallet' },
-        { label: '의류', slug: 'domestic-clothing' },
-        { label: '신발', slug: 'domestic-shoes' },
-        { label: '모자', slug: 'domestic-hat' },
-        { label: '악세사리', slug: 'domestic-accessory' },
-        { label: '시계', slug: 'domestic-watch' },
-        { label: '패션잡화', slug: 'domestic-fashion-acc' },
-        { label: '생활&주방용품', slug: 'domestic-home-kitchen' },
-        { label: '벨트', slug: 'domestic-belt' },
-        { label: '향수', slug: 'domestic-perfume' },
-        { label: '라이터', slug: 'domestic-lighter' },
-      ],
-    },
-    { label: '추천상품', slug: 'recommend' },
-    { label: '히트상품', slug: 'hot' },
-    { label: '인기상품', slug: 'popular' },
-    { label: '공지사항', slug: 'notice', isNotice: true },
-  ];
+  // DB 카테고리를 메뉴 구조로 변환
+  const menuConfig = useMemo(() => {
+    const depth1Cats = allCategories.filter(c => c.depth === 1);
+    const depth2Cats = allCategories.filter(c => c.depth === 2);
+
+    // 대분류 순서 정의
+    const mainOrder = ['men', 'women', 'domestic', 'recommend', 'hot', 'popular'];
+
+    const menu = depth1Cats
+      .sort((a, b) => {
+        const aIdx = mainOrder.indexOf(a.slug);
+        const bIdx = mainOrder.indexOf(b.slug);
+        if (aIdx === -1 && bIdx === -1) return 0;
+        if (aIdx === -1) return 1;
+        if (bIdx === -1) return -1;
+        return aIdx - bIdx;
+      })
+      .map(d1 => {
+        // 추천/히트/인기 상품은 중분류 없이 단독 메뉴
+        if (['recommend', 'hot', 'popular'].includes(d1.slug)) {
+          return {
+            label: getKoreanName(d1.slug, d1.name),
+            slug: d1.slug,
+          };
+        }
+
+        // 이 대분류의 중분류들
+        const children = depth2Cats
+          .filter(d2 => d2.parent_slug === d1.slug)
+          .map(d2 => ({
+            label: getKoreanName(d2.slug, d2.name),
+            slug: d2.slug,
+          }));
+
+        return {
+          label: getKoreanName(d1.slug, d1.name),
+          slug: d1.slug,
+          children: children.length > 0 ? children : undefined,
+        };
+      });
+
+    // 공지사항 추가 (항상 맨 뒤)
+    menu.push({ label: '공지사항', slug: 'notice', isNotice: true });
+
+    return menu;
+  }, [allCategories]);
 
   const toggleSubmenu = (slug) => {
     setOpenSubmenu(openSubmenu === slug ? null : slug);

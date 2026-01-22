@@ -74,7 +74,7 @@ exports.createNotice = async (req, res) => {
   const client = await pool.connect();
   
   try {
-    const { title, content, is_pinned } = req.body;
+    const { title, content, is_pinned, attachments } = req.body;
     const authorId = req.user.id;
 
     if (!title || !content) {
@@ -82,10 +82,10 @@ exports.createNotice = async (req, res) => {
     }
 
     const result = await client.query(`
-      INSERT INTO notices (title, content, author_id, is_pinned)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO notices (title, content, author_id, is_pinned, attachments)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
-    `, [title, content, authorId, is_pinned || false]);
+    `, [title, content, authorId, is_pinned || false, attachments || null]);
 
     res.status(201).json({
       message: '공지사항이 등록되었습니다.',
@@ -105,14 +105,14 @@ exports.updateNotice = async (req, res) => {
   
   try {
     const { id } = req.params;
-    const { title, content, is_pinned, is_active } = req.body;
+    const { title, content, is_pinned, is_active, attachments } = req.body;
 
     const result = await client.query(`
       UPDATE notices
-      SET title = $1, content = $2, is_pinned = $3, is_active = $4, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $5
+      SET title = $1, content = $2, is_pinned = $3, is_active = $4, attachments = $5, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $6
       RETURNING *
-    `, [title, content, is_pinned || false, is_active !== false, id]);
+    `, [title, content, is_pinned || false, is_active !== false, attachments || null, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: '공지사항을 찾을 수 없습니다.' });
