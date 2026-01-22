@@ -1,30 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
+const multerS3 = require('multer-s3');
+const { S3Client } = require('@aws-sdk/client-s3');
 const path = require('path');
-const fs = require('fs');
 
-// uploads 폴더 생성
-const uploadDir = path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Multer 설정
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    // 파일명: timestamp_원본파일명
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    const baseName = path.basename(file.originalname, ext)
-      .replace(/[^a-zA-Z0-9가-힣]/g, '_')
-      .substring(0, 50);
-    cb(null, `${uniqueSuffix}_${baseName}${ext}`);
+// AWS S3 클라이언트 설정
+const s3 = new S3Client({
+  region: process.env.AWS_REGION || 'ap-northeast-2',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
   }
 });
+
+const S3_BUCKET = process.env.AWS_S3_BUCKET || 'wiznoble-image';
 
 // 파일 필터 (이미지만 허용)
 const fileFilter = (req, file, cb) => {
@@ -36,8 +26,21 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+// Multer S3 설정
 const upload = multer({
-  storage,
+  storage: multerS3({
+    s3: s3,
+    bucket: S3_BUCKET,
+    contentType: multerS3.AUTO_CONTENT_TYPE,
+    key: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = path.extname(file.originalname);
+      const baseName = path.basename(file.originalname, ext)
+        .replace(/[^a-zA-Z0-9가-힣]/g, '_')
+        .substring(0, 50);
+      cb(null, `uploads/${uniqueSuffix}_${baseName}${ext}`);
+    }
+  }),
   fileFilter,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB
@@ -51,13 +54,13 @@ router.post('/image', upload.single('image'), (req, res) => {
       return res.status(400).json({ message: '파일이 업로드되지 않았습니다.' });
     }
 
-    // 업로드된 파일 URL 반환
-    const fileUrl = `/uploads/${req.file.filename}`;
+    // S3 URL 반환 (이미 절대 URL)
+    const fileUrl = req.file.location;
     
     res.json({
       success: true,
       url: fileUrl,
-      filename: req.file.filename,
+      filename: req.file.key,
       originalname: req.file.originalname,
       size: req.file.size
     });
@@ -75,8 +78,8 @@ router.post('/images', upload.array('images', 10), (req, res) => {
     }
 
     const uploadedFiles = req.files.map(file => ({
-      url: `/uploads/${file.filename}`,
-      filename: file.filename,
+      url: file.location,  // S3 URL
+      filename: file.key,
       originalname: file.originalname,
       size: file.size
     }));

@@ -3,14 +3,127 @@ import json
 import os
 import random
 import time
+import io
+import hashlib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Optional
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 import psycopg2
 from psycopg2.extras import RealDictCursor
+
+# AWS S3 설정
+try:
+    import boto3
+    from botocore.exceptions import ClientError
+    S3_ENABLED = True
+except ImportError:
+    S3_ENABLED = False
+    print("[WARNING] boto3가 설치되어 있지 않습니다. pip install boto3로 설치해주세요.")
+
+# AWS S3 설정
+AWS_REGION = os.environ.get("AWS_REGION", "ap-northeast-2")
+AWS_S3_BUCKET = os.environ.get("AWS_S3_BUCKET", "wiznoble-image")
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", "")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
+
+# S3 클라이언트 초기화
+s3_client = None
+if S3_ENABLED and AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
+    try:
+        s3_client = boto3.client(
+            's3',
+            region_name=AWS_REGION,
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+        )
+        print(f"[S3] AWS S3 연결 성공: {AWS_S3_BUCKET}")
+    except Exception as e:
+        print(f"[S3 ERROR] S3 클라이언트 초기화 실패: {e}")
+        s3_client = None
+
+
+def upload_image_to_s3(image_url: str, prefix: str = "crawled") -> Optional[str]:
+    """
+    외부 이미지 URL을 다운로드하여 S3에 업로드
+    Returns: S3 URL 또는 None (실패 시)
+    """
+    if not s3_client:
+        return image_url  # S3 사용 불가 시 원본 URL 반환
+    
+    if not image_url or not image_url.startswith("http"):
+        return image_url
+    
+    try:
+        # 이미지 다운로드
+        response = requests.get(image_url, headers=HEADERS, timeout=30)
+        if response.status_code != 200:
+            print(f"[S3] 이미지 다운로드 실패: {image_url}")
+            return image_url
+        
+        # 파일 확장자 결정
+        content_type = response.headers.get('Content-Type', 'image/jpeg')
+        ext_map = {
+            'image/jpeg': '.jpg',
+            'image/jpg': '.jpg',
+            'image/png': '.png',
+            'image/gif': '.gif',
+            'image/webp': '.webp',
+        }
+        ext = ext_map.get(content_type, '.jpg')
+        
+        # URL에서 확장자 추출 시도
+        parsed = urlparse(image_url)
+        path_ext = os.path.splitext(parsed.path)[1].lower()
+        if path_ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+            ext = path_ext if path_ext != '.jpeg' else '.jpg'
+        
+        # 고유 파일명 생성 (URL 해시 + 타임스탬프)
+        url_hash = hashlib.md5(image_url.encode()).hexdigest()[:12]
+        timestamp = int(time.time() * 1000)
+        s3_key = f"{prefix}/{timestamp}_{url_hash}{ext}"
+        
+        # S3에 업로드
+        s3_client.put_object(
+            Bucket=AWS_S3_BUCKET,
+            Key=s3_key,
+            Body=response.content,
+            ContentType=content_type,
+        )
+        
+        # S3 URL 반환
+        s3_url = f"https://{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{s3_key}"
+        return s3_url
+    
+    except Exception as e:
+        print(f"[S3 ERROR] 이미지 업로드 실패 ({image_url}): {e}")
+        return image_url  # 실패 시 원본 URL 반환
+
+
+def upload_images_batch_to_s3(image_urls: List[str], prefix: str = "crawled") -> List[str]:
+    """
+    여러 이미지를 병렬로 S3에 업로드
+    Returns: S3 URL 리스트
+    """
+    if not s3_client or not image_urls:
+        return image_urls
+    
+    s3_urls = []
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {executor.submit(upload_image_to_s3, url, prefix): url for url in image_urls}
+        for future in as_completed(futures):
+            try:
+                s3_url = future.result()
+                s3_urls.append(s3_url)
+            except Exception as e:
+                original_url = futures[future]
+                print(f"[S3 ERROR] 배치 업로드 실패: {e}")
+                s3_urls.append(original_url)
+    
+    return s3_urls
+
 
 # 설정
 SITEMAP_URL = "https://replmoa1.com/sitemap3.xml"
@@ -247,7 +360,7 @@ def parse_product_options(soup: BeautifulSoup) -> List[Dict[str, any]]:
     return unique_options
 
 
-def parse_product_detail(url: str) -> Optional[Dict[str, any]]:
+def parse_product_detail(url: str, upload_to_s3: bool = True) -> Optional[Dict[str, any]]:
     """개별 상품 페이지에서 정보를 추출합니다."""
     try:
         response = requests.get(url, headers=HEADERS, timeout=15)
@@ -320,6 +433,22 @@ def parse_product_detail(url: str) -> Optional[Dict[str, any]]:
 
         # 6. 옵션(사이즈, 컬러 등) 추출
         options = parse_product_options(soup)
+
+        # 7. S3에 이미지 업로드 (활성화된 경우)
+        if upload_to_s3 and s3_client:
+            # 대표 이미지 S3 업로드
+            if img_url:
+                s3_img_url = upload_image_to_s3(img_url, prefix="products")
+                if s3_img_url and s3_img_url != img_url:
+                    print(f"  [S3] 대표이미지 업로드 완료")
+                    img_url = s3_img_url
+            
+            # 설명 이미지들 S3 업로드 (병렬 처리)
+            if desc_img_urls:
+                print(f"  [S3] 설명이미지 {len(desc_img_urls)}개 업로드 중...")
+                s3_desc_urls = upload_images_batch_to_s3(desc_img_urls, prefix="products/desc")
+                desc_img_urls = s3_desc_urls
+                print(f"  [S3] 설명이미지 업로드 완료")
 
         return {
             "상품명": title,
