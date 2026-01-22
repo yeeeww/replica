@@ -218,16 +218,6 @@ const AdminCategories = () => {
     return { depth1Cats, depth2Cats, depth3Cats };
   };
 
-  // 뎁스별 라벨
-  const getDepthLabel = (depth) => {
-    switch(depth) {
-      case 1: return '대분류';
-      case 2: return '중분류';
-      case 3: return '소분류(브랜드)';
-      default: return '기타';
-    }
-  };
-
   // 뎁스별 색상
   const getDepthStyle = (depth) => {
     switch(depth) {

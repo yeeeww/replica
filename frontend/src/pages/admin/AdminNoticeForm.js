@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getNotice, createNotice, updateNotice, uploadImage, uploadImages } from '../../services/api';
+import { getNotice, createNotice, updateNotice, uploadImages } from '../../services/api';
 
 const AdminNoticeForm = () => {
   const { id } = useParams();

@@ -19,11 +19,6 @@ const SHIPPING_CARRIERS = [
   { code: 'etc', name: '기타' },
 ];
 
-const getCarrierName = (code) => {
-  const carrier = SHIPPING_CARRIERS.find(c => c.code === code);
-  return carrier ? carrier.name : code;
-};
-
 const AdminOrderDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
