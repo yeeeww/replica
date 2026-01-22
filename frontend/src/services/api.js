@@ -12,8 +12,15 @@ export const getImageUrl = (url) => {
   }
   // /uploads/로 시작하면 백엔드 서버 주소 붙이기
   if (url.startsWith('/uploads/')) {
-    const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://13.124.213.199:5000';
-    return `${backendUrl}${url}`;
+    // 프로덕션(Vercel)에서는 /api 프록시 사용, 로컬에서는 직접 백엔드 접근
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (isProduction) {
+      // Vercel에서는 /api/uploads/... 로 프록시
+      return `/api${url}`;
+    } else {
+      // 로컬 개발환경에서는 직접 백엔드 서버 사용
+      return `http://13.124.213.199:5000${url}`;
+    }
   }
   return url;
 };
