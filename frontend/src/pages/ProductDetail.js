@@ -9,7 +9,7 @@ import "./ProductDetail.css";
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { addToCart } = useCart();
   
   const [product, setProduct] = useState(null);
