@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import api from '../../services/api';
-import './AdminFeatured.js'; // 같은 스타일 사용
+import axios from 'axios';
 
 const MAIN_CATEGORIES = [
   { slug: 'men', name: '남성' },
@@ -19,7 +18,7 @@ const AdminWeeklyBest = () => {
   const fetchWeeklyBest = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.get(`/admin/weekly-best/${activeCategory}`);
+      const response = await axios.get(`/admin/weekly-best/${activeCategory}`);
       setWeeklyBestProducts(response.data.products || []);
     } catch (error) {
       console.error('Failed to fetch weekly best products:', error);
@@ -38,7 +37,7 @@ const AdminWeeklyBest = () => {
     if (!searchQuery.trim()) return;
     setSearching(true);
     try {
-      const response = await api.get('/admin/featured-search', {
+      const response = await axios.get('/admin/featured-search', {
         params: { search: searchQuery, limit: 20 }
       });
       setSearchResults(response.data.products || []);
@@ -51,7 +50,7 @@ const AdminWeeklyBest = () => {
 
   const handleAddProduct = async (productId) => {
     try {
-      await api.post(`/admin/weekly-best/${activeCategory}/${productId}`);
+      await axios.post(`/admin/weekly-best/${activeCategory}/${productId}`);
       fetchWeeklyBest();
       // 검색 결과에서 제거
       setSearchResults(prev => prev.filter(p => p.id !== productId));
@@ -63,7 +62,7 @@ const AdminWeeklyBest = () => {
   const handleRemoveProduct = async (productId) => {
     if (!window.confirm('이 상품을 Weekly Best에서 제거하시겠습니까?')) return;
     try {
-      await api.delete(`/admin/weekly-best/${activeCategory}/${productId}`);
+      await axios.delete(`/admin/weekly-best/${activeCategory}/${productId}`);
       fetchWeeklyBest();
     } catch (error) {
       alert(error.response?.data?.message || '상품 제거에 실패했습니다.');
