@@ -3,6 +3,21 @@ import axios from "axios";
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "/api";
 axios.defaults.baseURL = API_BASE_URL;
 
+// 업로드 이미지 URL을 절대 경로로 변환
+export const getImageUrl = (url) => {
+  if (!url) return 'https://via.placeholder.com/300';
+  // 이미 절대 URL이면 그대로 반환
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  // /uploads/로 시작하면 백엔드 서버 주소 붙이기
+  if (url.startsWith('/uploads/')) {
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://13.124.213.199:5000';
+    return `${backendUrl}${url}`;
+  }
+  return url;
+};
+
 // Products
 export const getProducts = (params) => axios.get(`/products`, { params });
 export const getProduct = (id) => axios.get(`/products/${id}`);

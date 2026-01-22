@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { formatPrice } from '../utils/format';
+import { getImageUrl } from '../services/api';
 import './ProductCard.css';
 
 const ProductCard = ({ product }) => {
@@ -16,7 +17,7 @@ const ProductCard = ({ product }) => {
   return (
     <Link to={`/products/${product.id}`} className="product-card">
       <div className="product-image">
-        <img src={product.image_url} alt={product.name} />
+        <img src={getImageUrl(product.image_url)} alt={product.name} />
       </div>
       <div className="product-info">
         {product.category_full_path && (

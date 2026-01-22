@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getProduct, getProductReviews, createReview } from "../services/api";
+import { getProduct, getProductReviews, createReview, getImageUrl } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { formatPrice } from "../utils/format";
@@ -187,7 +187,7 @@ const ProductDetail = () => {
         <div className="product-detail-content">
           <div className="product-gallery">
             <div className="product-main-image">
-              <img src={product.image_url} alt={product.name} />
+              <img src={getImageUrl(product.image_url)} alt={product.name} />
             </div>
           </div>
 
