@@ -88,12 +88,6 @@ const Login = () => {
             계정이 없으신가요? <Link to="/register">회원가입</Link>
           </p>
         </div>
-
-        <div className="demo-accounts">
-          <p className="demo-title">테스트 계정:</p>
-          <p>관리자: admin@shop.com / admin123</p>
-          <p>사용자: user@shop.com / user123</p>
-        </div>
       </div>
     </div>
   );
