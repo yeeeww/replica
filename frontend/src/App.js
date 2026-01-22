@@ -32,6 +32,7 @@ import AdminCrawler from './pages/admin/AdminCrawler';
 import AdminOrderDetail from './pages/admin/AdminOrderDetail';
 import AdminUserDetail from './pages/admin/AdminUserDetail';
 import AdminFeatured from './pages/admin/AdminFeatured';
+import AdminWeeklyBest from './pages/admin/AdminWeeklyBest';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -129,6 +130,7 @@ function App() {
                   <Route path="notices/new" element={<AdminNoticeForm />} />
                   <Route path="notices/:id/edit" element={<AdminNoticeForm />} />
                   <Route path="featured" element={<AdminFeatured />} />
+                  <Route path="weekly-best" element={<AdminWeeklyBest />} />
                   <Route path="crawler" element={<AdminCrawler />} />
                 </Route>
 

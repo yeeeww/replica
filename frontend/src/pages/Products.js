@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getProducts, getCategories } from "../services/api";
+import { getProducts, getCategories, getWeeklyBestProducts } from "../services/api";
 import ProductCard from "../components/ProductCard";
 import "./Products.css";
 
@@ -213,7 +213,6 @@ const Products = () => {
 			const response = await getProducts({ category, search, page, limit: 20 });
 			const list = response.data.products || [];
 			setProducts(list);
-			setBestProducts(list.slice(0, 12));
 			setPagination(response.data.pagination);
 		} catch (error) {
 			console.error("Failed to fetch products:", error);
@@ -221,6 +220,26 @@ const Products = () => {
 			setLoading(false);
 		}
 	};
+
+	// Weekly Best 상품 로드 (대분류별 수동 선택된 상품)
+	useEffect(() => {
+		const fetchWeeklyBest = async () => {
+			// 대분류가 men, women, domestic 중 하나일 때만 Weekly Best 로드
+			const mainCategories = ['men', 'women', 'domestic'];
+			if (mainCategories.includes(deriveMain)) {
+				try {
+					const response = await getWeeklyBestProducts(deriveMain, 12);
+					setBestProducts(response.data.products || []);
+				} catch (error) {
+					console.error("Failed to fetch weekly best:", error);
+					setBestProducts([]);
+				}
+			} else {
+				setBestProducts([]);
+			}
+		};
+		fetchWeeklyBest();
+	}, [deriveMain]);
 
 	const applySort = (items, option) => {
 		const arr = [...items];

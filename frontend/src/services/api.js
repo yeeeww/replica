@@ -59,6 +59,10 @@ export const addFeaturedProduct = (type, productId) => axios.post(`/admin/featur
 export const removeFeaturedProduct = (type, productId) => axios.delete(`/admin/featured/${type}/${productId}`);
 export const updateFeaturedOrder = (type, productIds) => axios.put(`/admin/featured/${type}/order`, { productIds });
 
+// Weekly Best (대분류별)
+export const getWeeklyBestProducts = (categorySlug, limit = 10) => 
+  axios.get(`/products/weekly-best/${categorySlug}`, { params: { limit } });
+
 // Notices (공지사항)
 export const getNotices = (params) => axios.get(`/notices`, { params });
 export const getNotice = (id) => axios.get(`/notices/${id}`);

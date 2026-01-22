@@ -57,6 +57,12 @@ const AdminDashboard = () => {
             추천/히트/인기 상품
           </Link>
           <Link 
+            to="/admin/weekly-best" 
+            className={isActive('/admin/weekly-best') ? 'active' : ''}
+          >
+            Weekly Best 관리
+          </Link>
+          <Link 
             to="/admin/crawler" 
             className={isActive('/admin/crawler') ? 'active' : ''}
           >

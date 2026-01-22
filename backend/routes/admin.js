@@ -526,4 +526,125 @@ router.put('/featured/:type/order', auth, adminAuth, async (req, res) => {
   }
 });
 
+// ========== Weekly Best 상품 관리 (대분류별) ==========
+
+// Weekly Best 상품 목록 조회 (대분류별)
+router.get('/weekly-best/:categorySlug', auth, adminAuth, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { categorySlug } = req.params;
+
+    const result = await client.query(`
+      SELECT wb.id, wb.display_order, wb.created_at,
+             p.id as product_id, p.name, p.price, p.image_url, p.is_active,
+             c.name as category_name, c.slug as category_slug
+      FROM weekly_best_products wb
+      JOIN products p ON wb.product_id = p.id
+      LEFT JOIN categories c ON p.category_id = c.id
+      WHERE wb.category_slug = $1
+      ORDER BY wb.display_order ASC, wb.created_at DESC
+    `, [categorySlug]);
+
+    res.json({ products: result.rows });
+  } catch (error) {
+    console.error('Get weekly best products error:', error);
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+  } finally {
+    client.release();
+  }
+});
+
+// Weekly Best 상품 추가
+router.post('/weekly-best/:categorySlug/:productId', auth, adminAuth, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { categorySlug, productId } = req.params;
+
+    // 상품 존재 확인
+    const productCheck = await client.query('SELECT id, name FROM products WHERE id = $1', [productId]);
+    if (productCheck.rows.length === 0) {
+      return res.status(404).json({ message: '상품을 찾을 수 없습니다.' });
+    }
+
+    // 현재 최대 순서 조회
+    const maxOrder = await client.query(
+      'SELECT COALESCE(MAX(display_order), 0) + 1 as next_order FROM weekly_best_products WHERE category_slug = $1',
+      [categorySlug]
+    );
+
+    const result = await client.query(`
+      INSERT INTO weekly_best_products (category_slug, product_id, display_order)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (category_slug, product_id) DO NOTHING
+      RETURNING id
+    `, [categorySlug, productId, maxOrder.rows[0].next_order]);
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ message: '이미 추가된 상품입니다.' });
+    }
+
+    res.json({ message: '상품이 추가되었습니다.', product: productCheck.rows[0] });
+  } catch (error) {
+    console.error('Add weekly best product error:', error);
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+  } finally {
+    client.release();
+  }
+});
+
+// Weekly Best 상품 제거
+router.delete('/weekly-best/:categorySlug/:productId', auth, adminAuth, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { categorySlug, productId } = req.params;
+
+    const result = await client.query(
+      'DELETE FROM weekly_best_products WHERE category_slug = $1 AND product_id = $2 RETURNING id',
+      [categorySlug, productId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: '등록된 상품을 찾을 수 없습니다.' });
+    }
+
+    res.json({ message: '상품이 제거되었습니다.' });
+  } catch (error) {
+    console.error('Remove weekly best product error:', error);
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+  } finally {
+    client.release();
+  }
+});
+
+// Weekly Best 상품 순서 변경
+router.put('/weekly-best/:categorySlug/order', auth, adminAuth, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { categorySlug } = req.params;
+    const { productIds } = req.body;
+
+    if (!Array.isArray(productIds)) {
+      return res.status(400).json({ message: '상품 ID 배열이 필요합니다.' });
+    }
+
+    await client.query('BEGIN');
+
+    for (let i = 0; i < productIds.length; i++) {
+      await client.query(
+        'UPDATE weekly_best_products SET display_order = $1 WHERE category_slug = $2 AND product_id = $3',
+        [i + 1, categorySlug, productIds[i]]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ message: '순서가 변경되었습니다.' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Update weekly best order error:', error);
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router;

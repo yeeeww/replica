@@ -5,7 +5,9 @@ import "./Home.css";
 
 const Home = () => {
 	const [products, setProducts] = useState([]);
+	const [hitProducts, setHitProducts] = useState([]);
 	const [loading, setLoading] = useState(true);
+	const [hitLoading, setHitLoading] = useState(true);
 	const [currentSlide, setCurrentSlide] = useState(0);
 	const [newVisibleCount, setNewVisibleCount] = useState(4);
 	const [hitSlideIndex, setHitSlideIndex] = useState(0);
@@ -47,7 +49,20 @@ const Home = () => {
 
 	useEffect(() => {
 		fetchFeaturedProducts();
+		fetchHitProducts();
 	}, []);
+
+	const fetchHitProducts = async () => {
+		try {
+			// 히트상품: 관리자가 수동 추가한 상품 (category=hot)
+			const response = await getProducts({ category: 'hot', limit: 15 });
+			setHitProducts(response.data.products || []);
+		} catch (error) {
+			console.error("Failed to fetch hit products:", error);
+		} finally {
+			setHitLoading(false);
+		}
+	};
 
 	useEffect(() => {
 		const timer = setInterval(() => {
@@ -59,7 +74,8 @@ const Home = () => {
 
 	const fetchFeaturedProducts = async () => {
 		try {
-			const response = await getProducts({ limit: 20 });
+			// 신상품: 최신 등록 순으로 30개 (백엔드에서 created_at DESC로 정렬)
+			const response = await getProducts({ limit: 30 });
 			setProducts(response.data.products);
 		} catch (error) {
 			console.error("Failed to fetch products:", error);
@@ -120,9 +136,10 @@ const Home = () => {
 		},
 	];
 
+	// 인기상품 중 카테고리별 BEST 섹션
 	const popularSections = [
 		{
-			slug: "bags",
+			slug: "bag",
 			title: "BEST Bags Collection",
 			subtitle: "베스트 가방 모아보기",
 			banner: "https://jpound2024.cafe24.com/images/slider/main/9_9.webp",
@@ -143,9 +160,9 @@ const Home = () => {
 			mobileBanner: "https://jpound2024.cafe24.com/images/slider/main/5_5.webp"
 		},
 		{
-			slug: "acc",
-			title: "BEST ACC Collection",
-			subtitle: "베스트 액세서리 모아보기",
+			slug: "watch",
+			title: "BEST Watch Collection",
+			subtitle: "베스트 시계 모아보기",
 			banner: "https://jpound2024.cafe24.com/images/slider/main/4_1.webp",
 			mobileBanner: "https://jpound2024.cafe24.com/images/slider/main/4_1.webp"
 		},
@@ -156,7 +173,6 @@ const Home = () => {
 	};
 
 	const visibleNewItems = products.slice(0, newVisibleCount);
-	const hitProducts = products.slice(0, 15);
 	const hitSlides = [];
 	for (let i = 0; i < hitProducts.length; i += 5) {
 		hitSlides.push(hitProducts.slice(i, i + 5));
@@ -186,9 +202,10 @@ const Home = () => {
 		const fetchPopular = async () => {
 			try {
 				setPopularLoading(true);
+				// 인기상품(is_popular=true) 중 해당 카테고리 상품만 가져오기
 				const results = await Promise.all(
 					popularSections.map(async (section) => {
-						const res = await getProducts({ category: section.slug, limit: 4 });
+						const res = await getProducts({ popular_category: section.slug, limit: 4 });
 						return { slug: section.slug, items: res.data.products || [] };
 					})
 				);
@@ -308,7 +325,7 @@ const Home = () => {
 				</div>
 			</section>
 
-			{/* HIT PRODUCTS 섹션 */}
+			{/* HIT PRODUCTS 섹션 - 관리자가 수동 추가한 히트상품 */}
 			<section className="celeb-picks">
 				<div className="container">
 					<div className="section-header-simple">
@@ -318,7 +335,7 @@ const Home = () => {
 							</Link>
 						</h2>
 					</div>
-					{loading ? (
+					{hitLoading ? (
 						<div className="loading">상품을 불러오는 중...</div>
 					) : (
 						<div className="celeb-carousel">
