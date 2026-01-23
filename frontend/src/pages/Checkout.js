@@ -15,7 +15,6 @@ const Checkout = () => {
   // 바로구매 또는 장바구니 구매 판별
   const buyNowData = location.state;
   const isBuyNow = buyNowData?.buyNow === true;
-  const fromCart = buyNowData?.fromCart === true;
   const isGuest = !isAuthenticated;
   
   const [formData, setFormData] = useState({
