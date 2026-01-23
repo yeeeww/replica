@@ -64,11 +64,6 @@
   color: #888;
 }
 
-.notices-col-views {
-  text-align: center;
-  color: #888;
-}
-
 .notice-badge {
   display: inline-block;
   padding: 2px 8px;
@@ -139,8 +134,7 @@
     font-size: 15px;
   }
 
-  .notices-col-date,
-  .notices-col-views {
+  .notices-col-date {
     font-size: 12px;
     text-align: left;
   }

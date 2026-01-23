@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { getCategories } from '../services/api';
+import { getCategories, getPublicSettings } from '../services/api';
 import './Header.css';
 
 // 카테고리 영문 slug -> 한글 이름 매핑
@@ -67,6 +67,7 @@ const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openSubmenu, setOpenSubmenu] = useState(null);
   const [allCategories, setAllCategories] = useState([]);
+  const [registerPoints, setRegisterPoints] = useState(5000);
 
   // DB에서 카테고리 불러오기
   useEffect(() => {
@@ -79,6 +80,20 @@ const Header = () => {
       }
     };
     fetchCategories();
+  }, []);
+
+  // 회원가입 적립금 설정 가져오기
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await getPublicSettings();
+        const points = parseInt(response.data.settings?.register_points) || 5000;
+        setRegisterPoints(points);
+      } catch (error) {
+        console.error('설정 로딩 실패:', error);
+      }
+    };
+    fetchSettings();
   }, []);
 
   const handleLogout = () => {
@@ -179,13 +194,17 @@ const Header = () => {
           {user ? (
             <>
               <span className="mobile-user-name">{user.name || user.email}</span>
+              <Link to="/mypage">마이페이지</Link>
               <Link to="/orders">주문내역</Link>
               <button className="mobile-logout-btn" onClick={handleLogout}>로그아웃</button>
             </>
           ) : (
             <>
               <Link to="/login">로그인</Link>
-              <Link to="/register">회원가입</Link>
+              <Link to="/terms" className="register-link-wrapper mobile-register">
+                <span className="floating-points-badge">+{registerPoints.toLocaleString()} P</span>
+                회원가입
+              </Link>
             </>
           )}
           <Link to="/cart" className="mobile-cart-link">
@@ -203,7 +222,6 @@ const Header = () => {
               {/* 빈 공간 */}
             </div>
             <div className="header-top-right">
-              <span className="points-badge">+5,000 P</span>
               <button className="icon-btn search-btn">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <circle cx="11" cy="11" r="8"></circle>
@@ -212,13 +230,17 @@ const Header = () => {
               </button>
               {user ? (
                 <>
+                  <Link to="/mypage">마이페이지</Link>
                   <Link to="/orders">주문내역</Link>
                   <button className="link-btn" onClick={handleLogout}>로그아웃</button>
                 </>
               ) : (
                 <>
                   <Link to="/login">로그인</Link>
-                  <Link to="/register">회원가입</Link>
+                  <Link to="/terms" className="register-link-wrapper">
+                    <span className="floating-points-badge">+{registerPoints.toLocaleString()} P</span>
+                    회원가입
+                  </Link>
                 </>
               )}
               <Link to="/cart" className="cart-link">

@@ -10,11 +10,14 @@ import Home from './pages/Home';
 import Products from './pages/Products';
 import ProductDetail from './pages/ProductDetail';
 import Login from './pages/Login';
+import Terms from './pages/Terms';
 import Register from './pages/Register';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import Orders from './pages/Orders';
 import OrderDetail from './pages/OrderDetail';
+import GuestOrderLookup from './pages/GuestOrderLookup';
+import MyPage from './pages/MyPage';
 
 import Notices from './pages/Notices';
 import NoticeDetail from './pages/NoticeDetail';
@@ -33,6 +36,8 @@ import AdminOrderDetail from './pages/admin/AdminOrderDetail';
 import AdminUserDetail from './pages/admin/AdminUserDetail';
 import AdminFeatured from './pages/admin/AdminFeatured';
 import AdminWeeklyBest from './pages/admin/AdminWeeklyBest';
+import AdminPointsSettings from './pages/admin/AdminPointsSettings';
+import AdminBanners from './pages/admin/AdminBanners';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -72,22 +77,20 @@ function App() {
                 <Route path="/notices" element={<Notices />} />
                 <Route path="/notices/:id" element={<NoticeDetail />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/terms" element={<Terms />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/order-lookup" element={<GuestOrderLookup />} />
+
+                {/* Cart & Checkout - 비회원도 접근 가능 */}
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/checkout" element={<Checkout />} />
 
                 {/* Protected Routes */}
                 <Route 
-                  path="/cart" 
+                  path="/mypage" 
                   element={
                     <ProtectedRoute>
-                      <Cart />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/checkout" 
-                  element={
-                    <ProtectedRoute>
-                      <Checkout />
+                      <MyPage />
                     </ProtectedRoute>
                   } 
                 />
@@ -131,6 +134,8 @@ function App() {
                   <Route path="notices/:id/edit" element={<AdminNoticeForm />} />
                   <Route path="featured" element={<AdminFeatured />} />
                   <Route path="weekly-best" element={<AdminWeeklyBest />} />
+                  <Route path="points-settings" element={<AdminPointsSettings />} />
+                  <Route path="banners" element={<AdminBanners />} />
                   <Route path="crawler" element={<AdminCrawler />} />
                 </Route>
 

@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { getImageUrl } from '../services/api';
 import { formatPrice } from '../utils/format';
 import './Cart.css';
 
 const Cart = () => {
   const navigate = useNavigate();
   const { cart, updateCartItem, removeFromCart, loading } = useCart();
+  const { isAuthenticated } = useAuth();
   const [updating, setUpdating] = useState({});
 
   const handleQuantityChange = async (itemId, newQuantity) => {
@@ -33,7 +36,13 @@ const Cart = () => {
   };
 
   const handleCheckout = () => {
-    navigate('/checkout');
+    // 장바구니에서 결제로 이동 (비회원도 가능)
+    navigate('/checkout', { 
+      state: { 
+        fromCart: true,
+        isGuest: !isAuthenticated 
+      } 
+    });
   };
 
   if (loading) {
@@ -64,7 +73,7 @@ const Cart = () => {
             {cart.items.map((item) => (
               <div key={item.id} className="cart-item">
                 <Link to={`/products/${item.product_id}`} className="cart-item-image">
-                  <img src={item.image_url} alt={item.name} />
+                  <img src={getImageUrl(item.image_url)} alt={item.name} />
                 </Link>
 
                 <div className="cart-item-info">

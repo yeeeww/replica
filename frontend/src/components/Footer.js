@@ -6,39 +6,31 @@ const Footer = () => {
     <footer className="footer">
       <div className="container">
         <div className="footer-content">
-          <div className="footer-section">
-            <h3>MODERN SHOP</h3>
-            <p>현대적이고 세련된 쇼핑 경험</p>
-          </div>
-          
-          <div className="footer-section">
-            <h4>고객 서비스</h4>
-            <ul>
-              <li><a href="#!">FAQ</a></li>
-              <li><a href="#!">배송 정보</a></li>
-              <li><a href="#!">반품 및 교환</a></li>
-              <li><a href="#!">이용약관</a></li>
-            </ul>
-          </div>
-          
-          <div className="footer-section">
-            <h4>회사 정보</h4>
-            <ul>
-              <li><a href="#!">회사 소개</a></li>
-              <li><a href="#!">채용</a></li>
-              <li><a href="#!">개인정보처리방침</a></li>
-            </ul>
-          </div>
-          
-          <div className="footer-section">
-            <h4>문의</h4>
-            <p>이메일: support@modernshop.com</p>
-            <p>전화: 1588-0000</p>
+          <div className="footer-info">
+            <h3>고객센터</h3>
+            <div className="footer-hours">
+              <p>운영시간 : 평일 10시~18시</p>
+              <p>토 · 일 · 공휴일 휴무</p>
+            </div>
+            
+            <div className="footer-kakao">
+              <a 
+                href="https://pf.kakao.com/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="kakao-link"
+              >
+                <svg className="kakao-icon" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 3C6.477 3 2 6.463 2 10.714c0 2.677 1.782 5.03 4.469 6.37-.17.614-.61 2.223-.7 2.566-.11.422.156.416.328.303.135-.09 2.15-1.46 3.023-2.052.602.088 1.222.134 1.88.134 5.523 0 10-3.463 10-7.321S17.523 3 12 3z"/>
+                </svg>
+                <span>카카오 고객센터 : ID(차후수정)</span>
+              </a>
+            </div>
           </div>
         </div>
         
         <div className="footer-bottom">
-          <p>&copy; 2024 Modern Shop. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} WIZNOBLE. All rights reserved.</p>
         </div>
       </div>
     </footer>
@@ -46,4 +38,3 @@ const Footer = () => {
 };
 
 export default Footer;
-

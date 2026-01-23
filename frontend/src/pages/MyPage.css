@@ -1,0 +1,414 @@
+.mypage {
+  padding: 40px 0 80px;
+}
+
+.mypage h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+/* 상단 요약 정보 */
+.mypage-summary {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 60px;
+  padding: 30px;
+  background: #f8f8f8;
+  border-radius: 8px;
+  margin-bottom: 30px;
+}
+
+.summary-profile {
+  text-align: center;
+}
+
+.profile-image-wrapper {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.profile-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-image-placeholder {
+  width: 100%;
+  height: 100%;
+  background: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-image-placeholder span {
+  font-size: 32px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.summary-item {
+  text-align: center;
+}
+
+.summary-label {
+  display: block;
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.summary-value {
+  display: block;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.summary-value.highlight {
+  color: #e74c3c;
+}
+
+/* 퀵 메뉴 */
+.mypage-quick-menu {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.quick-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 40px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #333;
+  transition: all 0.2s;
+}
+
+.quick-menu-item:hover {
+  border-color: #000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.quick-icon {
+  font-size: 24px;
+}
+
+/* 탭 메뉴 */
+.mypage-tabs {
+  display: flex;
+  border-bottom: 2px solid #000;
+  margin-bottom: 30px;
+}
+
+.mypage-tab {
+  flex: 1;
+  padding: 15px;
+  background: #f5f5f5;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mypage-tab:hover {
+  background: #eee;
+}
+
+.mypage-tab.active {
+  background: #000;
+  color: #fff;
+}
+
+/* 회원정보 섹션 */
+.mypage-content {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.info-section h3 {
+  font-size: 16px;
+  font-weight: 600;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 20px;
+}
+
+.info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.info-row {
+  display: flex;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.info-label {
+  width: 140px;
+  color: #666;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.info-value {
+  flex: 1;
+  font-size: 14px;
+  color: #333;
+}
+
+/* 프로필 이미지 업로드 */
+.profile-upload-group {
+  margin-bottom: 20px;
+}
+
+.profile-upload-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-upload-preview {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px dashed #ddd;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.2s;
+}
+
+.profile-upload-preview:hover {
+  border-color: #000;
+}
+
+.profile-upload-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-upload-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f8f8f8;
+  color: #888;
+}
+
+.profile-upload-placeholder span {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.profile-upload-placeholder p {
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.profile-upload-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 12px;
+}
+
+/* 수정 폼 */
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.edit-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.edit-form label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.edit-form input {
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.edit-form input:focus {
+  outline: none;
+  border-color: #000;
+}
+
+.edit-form input:disabled {
+  background: #f5f5f5;
+  color: #888;
+}
+
+.edit-form small {
+  font-size: 12px;
+  color: #888;
+}
+
+/* 라디오 버튼 */
+.radio-group {
+  display: flex;
+  gap: 30px;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.radio-label input[type="radio"] {
+  width: 18px;
+  height: 18px;
+}
+
+/* 생년월일 셀렉트 */
+.birth-selects {
+  display: flex;
+  gap: 10px;
+}
+
+.birth-selects select {
+  flex: 1;
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background: #fff;
+}
+
+.birth-selects select:focus {
+  outline: none;
+  border-color: #000;
+}
+
+/* 주소 입력 */
+.address-input {
+  display: flex;
+  gap: 10px;
+}
+
+.address-input input {
+  flex: 1;
+}
+
+.btn-address {
+  padding: 12px 20px;
+  background: #333;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-address:hover {
+  background: #000;
+}
+
+/* 버튼 */
+.btn-full {
+  width: 100%;
+  padding: 15px;
+  margin-top: 20px;
+}
+
+/* 알림 메시지 */
+.mypage .alert {
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.mypage .alert.error {
+  background: #fee;
+  color: #c00;
+}
+
+.mypage .alert.success {
+  background: #efe;
+  color: #060;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .mypage-summary {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .mypage-quick-menu {
+    gap: 10px;
+  }
+
+  .quick-menu-item {
+    padding: 15px 25px;
+  }
+
+  .mypage-tabs {
+    flex-wrap: wrap;
+  }
+
+  .mypage-tab {
+    flex: 1 1 auto;
+    min-width: 33.33%;
+  }
+
+  .info-row {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .info-label {
+    width: auto;
+  }
+
+  .birth-selects {
+    flex-direction: column;
+  }
+
+  .address-input {
+    flex-direction: column;
+  }
+}

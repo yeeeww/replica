@@ -1,15 +1,22 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { createOrder } from '../services/api';
+import { createOrder, createGuestOrder, getPublicSettings, getImageUrl } from '../services/api';
 import { formatPrice } from '../utils/format';
 import './Checkout.css';
 
 const Checkout = () => {
   const navigate = useNavigate();
-  const { cart } = useCart();
-  const { user } = useAuth();
+  const location = useLocation();
+  const { cart, clearCart } = useCart();
+  const { user, updateUserPoints, refreshUser, isAuthenticated } = useAuth();
+
+  // 바로구매 또는 장바구니 구매 판별
+  const buyNowData = location.state;
+  const isBuyNow = buyNowData?.buyNow === true;
+  const fromCart = buyNowData?.fromCart === true;
+  const isGuest = !isAuthenticated;
   
   const [formData, setFormData] = useState({
     // 주문자 정보
@@ -37,6 +44,51 @@ const Checkout = () => {
   const [agreePurchase, setAgreePurchase] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // 적립금 관련 상태
+  const [usePoints, setUsePoints] = useState(0);
+  const [pointsRate, setPointsRate] = useState(1); // 적립률 (%)
+  const [userPoints, setUserPoints] = useState(0);
+
+  // 적립률 설정 및 사용자 포인트 가져오기 (최초 1회만)
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // 설정 가져오기
+        const settingsResponse = await getPublicSettings();
+        const rate = parseFloat(settingsResponse.data.settings?.purchase_points_rate) || 1;
+        setPointsRate(rate);
+
+        // 로그인 사용자만 포인트 가져오기
+        if (isAuthenticated) {
+          const updatedUser = await refreshUser();
+          if (updatedUser?.points !== undefined) {
+            setUserPoints(updatedUser.points);
+          }
+        }
+      } catch (error) {
+        console.error('데이터 로딩 실패:', error);
+      }
+    };
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
+  // 주문 상품 목록 계산
+  const orderItems = useMemo(() => {
+    if (isBuyNow && buyNowData?.item) {
+      return [buyNowData.item];
+    }
+    return cart.items;
+  }, [isBuyNow, buyNowData, cart.items]);
+
+  // 주문 총액 계산
+  const orderTotal = useMemo(() => {
+    if (isBuyNow && buyNowData?.item) {
+      return buyNowData.item.product_price * buyNowData.item.quantity;
+    }
+    return cart.total;
+  }, [isBuyNow, buyNowData, cart.total]);
 
   const handleChange = (e) => {
     setFormData({
@@ -101,19 +153,41 @@ const Checkout = () => {
       return;
     }
 
+    if (!formData.shipping_name || !formData.shipping_name.trim()) {
+      setError('수령인 이름을 입력해주세요.');
+      return;
+    }
+
+    if (!formData.shipping_phone || !formData.shipping_phone.trim()) {
+      setError('수령인 연락처를 입력해주세요.');
+      return;
+    }
+
+    if (!formData.shipping_address || !formData.shipping_address.trim()) {
+      setError('배송 주소를 입력해주세요.');
+      return;
+    }
+
+    if (!formData.customs_id || !formData.customs_id.trim()) {
+      setError('개인통관부호를 입력해주세요.');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const fullAddress = `${formData.shipping_zipcode} ${formData.shipping_address} ${formData.shipping_address_detail}`.trim();
       
+      // 주문 상품 목록 생성
+      const items = isBuyNow && buyNowData?.item
+        ? [{ product_id: buyNowData.item.product_id, quantity: buyNowData.item.quantity }]
+        : cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity }));
+
       const orderData = {
         shipping_name: formData.shipping_name,
         shipping_phone: formData.shipping_phone,
         shipping_address: fullAddress,
-        items: cart.items.map(item => ({
-          product_id: item.product_id,
-          quantity: item.quantity
-        })),
+        items: items,
         // 추가 정보
         orderer_name: formData.orderer_name,
         orderer_phone: formData.orderer_phone,
@@ -122,13 +196,49 @@ const Checkout = () => {
         referral_source: formData.referral_source,
         delivery_message: formData.delivery_message,
         depositor_name: formData.depositor_name,
-        shipping_memo: formData.shipping_memo
+        shipping_memo: formData.shipping_memo,
+        // 적립금 사용 (로그인 사용자만)
+        use_points: isGuest ? 0 : usePoints
       };
 
-      const response = await createOrder(orderData);
-      navigate(`/orders/${response.data.order.id}`, { 
-        state: { message: '주문이 완료되었습니다! 무통장 입금 후 48시간 동안 미입금시 자동 취소됩니다.' }
-      });
+      let response;
+      
+      if (isGuest) {
+        // 비회원 주문
+        response = await createGuestOrder(orderData);
+        
+        // 장바구니에서 주문한 경우 장바구니 비우기
+        if (!isBuyNow) {
+          await clearCart();
+        }
+        
+        // 비회원 주문 완료 페이지로 이동
+        navigate('/order-lookup', { 
+          state: { 
+            orderComplete: true,
+            orderId: response.data.order.id,
+            message: '주문이 완료되었습니다! 주문번호를 기억해주세요.'
+          }
+        });
+      } else {
+        // 회원 주문
+        response = await createOrder(orderData);
+        
+        // 사용자 포인트 업데이트
+        if (response.data.remainingPoints !== undefined) {
+          updateUserPoints(response.data.remainingPoints);
+        }
+
+        // 바로구매가 아닌 경우 장바구니는 API에서 자동으로 처리됨
+        
+        navigate(`/orders/${response.data.order.id}`, { 
+          state: { 
+            message: '주문이 완료되었습니다! 무통장 입금 후 48시간 동안 미입금시 자동 취소됩니다.',
+            pointsUsed: response.data.pointsUsed,
+            pointsToEarn: response.data.pointsToEarn
+          }
+        });
+      }
     } catch (error) {
       setError(error.response?.data?.message || '주문에 실패했습니다.');
     } finally {
@@ -136,7 +246,29 @@ const Checkout = () => {
     }
   };
 
-  if (cart.items.length === 0) {
+  // 적립금 사용량 변경 핸들러
+  const handlePointsChange = (e) => {
+    let value = parseInt(e.target.value) || 0;
+    // 보유 포인트와 상품가격 중 작은 값으로 제한
+    const maxUsable = Math.min(userPoints, orderTotal);
+    value = Math.max(0, Math.min(value, maxUsable));
+    setUsePoints(value);
+  };
+
+  // 전액 사용 버튼
+  const handleUseAllPoints = () => {
+    const maxUsable = Math.min(userPoints, orderTotal);
+    setUsePoints(maxUsable);
+  };
+
+  // 최종 결제금액 계산
+  const finalAmount = Math.max(0, orderTotal - (isGuest ? 0 : usePoints));
+  
+  // 적립 예정 포인트 (배송완료 시, 회원만)
+  const earnPoints = isGuest ? 0 : Math.floor(finalAmount * (pointsRate / 100));
+
+  // 주문할 상품이 없으면 리다이렉트
+  if (orderItems.length === 0) {
     navigate('/cart');
     return null;
   }
@@ -163,15 +295,20 @@ const Checkout = () => {
             <div className="checkout-section">
               <h2>주문 상품 정보</h2>
               <div className="checkout-products">
-                {cart.items.map((item) => (
-                  <div key={item.id} className="checkout-product">
+                {orderItems.map((item, index) => (
+                  <div key={item.id || item.product_id || index} className="checkout-product">
                     <div className="checkout-product-image">
-                      <img src={item.image_url} alt={item.name} />
+                      <img src={getImageUrl(item.image_url)} alt={item.name || item.product_name} />
                     </div>
                     <div className="checkout-product-info">
-                      <p className="checkout-product-name">{item.name}</p>
-                      <p className="checkout-product-option">20일이내수령 - {item.quantity}개</p>
-                      <p className="checkout-product-price">{formatPrice(item.price * item.quantity)}</p>
+                      <p className="checkout-product-name">{item.name || item.product_name}</p>
+                      <p className="checkout-product-option">
+                        {item.options && `${item.options} / `}
+                        20일이내수령 - {item.quantity}개
+                      </p>
+                      <p className="checkout-product-price">
+                        {formatPrice((item.price || item.product_price) * item.quantity)}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -227,7 +364,7 @@ const Checkout = () => {
 
             {/* 배송 정보 */}
             <div className="checkout-section">
-              <h2>배송 정보</h2>
+              <h2>배송 정보 <span className="section-required">* 필수입력</span></h2>
               <label className="checkout-checkbox-label">
                 <input
                   type="checkbox"
@@ -243,7 +380,7 @@ const Checkout = () => {
                     name="shipping_name"
                     value={formData.shipping_name}
                     onChange={handleChange}
-                    placeholder="수령인"
+                    placeholder="수령인 *"
                     required
                   />
                 </div>
@@ -253,7 +390,7 @@ const Checkout = () => {
                     name="shipping_phone"
                     value={formData.shipping_phone}
                     onChange={handleChange}
-                    placeholder="연락처"
+                    placeholder="연락처 *"
                     required
                   />
                 </div>
@@ -278,7 +415,7 @@ const Checkout = () => {
                   name="shipping_address"
                   value={formData.shipping_address}
                   onChange={handleChange}
-                  placeholder="주소"
+                  placeholder="주소 *"
                   readOnly
                   required
                 />
@@ -316,13 +453,14 @@ const Checkout = () => {
                 <p>카드결제 원하시는 고객님은 무통장 선택하고 결제하기 -&gt; 잠시 기다리신 후 화면이 바뀌면 한번 더 결제하기 클릭 ! (결제창이 뜨면 카드사 선택후 결제하기) 결제 오류시 카카오톡 상담부탁드립니다 🙂</p>
               </div>
               <div className="checkout-form-group">
-                <label className="checkout-label">개인 통관부호 입력</label>
+                <label className="checkout-label">개인 통관부호 입력 <span className="required-mark">*</span></label>
                 <input
                   type="text"
                   name="customs_id"
                   value={formData.customs_id}
                   onChange={handleChange}
-                  placeholder="내용을 입력해주세요."
+                  placeholder="P로 시작하는 13자리 (필수)"
+                  required
                 />
               </div>
               <div className="checkout-form-group">
@@ -353,21 +491,77 @@ const Checkout = () => {
 
           {/* 우측: 주문 요약 + 결제수단 + 약관 + 결제버튼 */}
           <div className="checkout-right">
+            {/* 적립금 사용 (회원만) */}
+            {!isGuest && (
+              <div className="checkout-points-box">
+                <h2>적립금 사용</h2>
+                <div className="checkout-points-info">
+                  <span>보유 적립금</span>
+                  <span className="checkout-points-available">{userPoints.toLocaleString()}P</span>
+                </div>
+                <div className="checkout-points-input-row">
+                  <input
+                    type="number"
+                    value={usePoints}
+                    onChange={handlePointsChange}
+                    min="0"
+                    max={Math.min(userPoints, orderTotal)}
+                    className="checkout-points-input"
+                    placeholder="0"
+                  />
+                  <span className="checkout-points-unit">P</span>
+                  <button 
+                    type="button" 
+                    className="checkout-points-all-btn"
+                    onClick={handleUseAllPoints}
+                    disabled={userPoints === 0}
+                  >
+                    전액사용
+                  </button>
+                </div>
+                {usePoints > 0 && (
+                  <p className="checkout-points-discount">
+                    -{formatPrice(usePoints)} 할인 적용
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* 비회원 안내 */}
+            {isGuest && (
+              <div className="checkout-guest-notice">
+                <p>비회원 주문입니다.</p>
+                <p className="sub">회원 가입 시 적립금 혜택을 받으실 수 있습니다.</p>
+              </div>
+            )}
+
             {/* 주문 요약 */}
             <div className="checkout-summary-box">
               <h2>주문 요약</h2>
               <div className="checkout-summary-row">
                 <span>상품가격</span>
-                <span>{formatPrice(cart.total)}</span>
+                <span>{formatPrice(orderTotal)}</span>
               </div>
+              {!isGuest && usePoints > 0 && (
+                <div className="checkout-summary-row checkout-summary-discount">
+                  <span>적립금 사용</span>
+                  <span>-{formatPrice(usePoints)}</span>
+                </div>
+              )}
               <div className="checkout-summary-row">
                 <span>배송비</span>
                 <span>무료</span>
               </div>
               <div className="checkout-summary-total">
-                <span>총 주문금액</span>
-                <span className="checkout-total-price">{formatPrice(cart.total)}</span>
+                <span>총 결제금액</span>
+                <span className="checkout-total-price">{formatPrice(finalAmount)}</span>
               </div>
+              {!isGuest && (
+                <div className="checkout-earn-points">
+                  <span>적립 예정</span>
+                  <span>{earnPoints.toLocaleString()}P</span>
+                </div>
+              )}
             </div>
 
             {/* 결제수단 */}

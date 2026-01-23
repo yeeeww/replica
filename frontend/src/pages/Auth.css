@@ -75,6 +75,156 @@
   text-decoration: underline;
 }
 
+.guest-order-link {
+  margin-top: 12px;
+}
+
+.guest-order-link a {
+  color: #666;
+  font-weight: 400;
+}
+
+.guest-order-link a:hover {
+  color: var(--primary-color);
+}
+
+/* ===== Login 페이지 전용 스타일 ===== */
+.login-page {
+  background-color: #fff;
+}
+
+.login-container {
+  border: none;
+  max-width: 500px;
+}
+
+.login-container h1 {
+  font-family: 'Times New Roman', serif;
+  font-size: 36px;
+  font-weight: 400;
+  font-style: italic;
+  margin-bottom: 40px;
+}
+
+.login-form {
+  gap: 0 !important;
+}
+
+.login-form .form-group {
+  margin-bottom: 0;
+}
+
+.login-form .form-group input {
+  border: none;
+  border-bottom: 1px solid #e5e5e5;
+  border-radius: 0;
+  padding: 16px 0;
+  font-size: 15px;
+}
+
+.login-form .form-group input::placeholder {
+  color: #aaa;
+}
+
+.login-form .form-group input:focus {
+  outline: none;
+  border-bottom-color: #333;
+}
+
+/* 로그인상태유지 체크박스 */
+.remember-me {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  margin-bottom: 20px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+}
+
+.remember-me input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #333;
+}
+
+/* 로그인 버튼 (검정) */
+.btn-dark {
+  background-color: #222 !important;
+  color: white !important;
+  border: none !important;
+  padding: 14px !important;
+  font-size: 15px !important;
+}
+
+.btn-dark:hover:not(:disabled) {
+  background-color: #000 !important;
+}
+
+/* 하단 링크 (회원가입 / 아이디·비밀번호 찾기) */
+.login-bottom-links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding: 0 4px;
+}
+
+.bottom-link {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+}
+
+.bottom-link:hover {
+  color: #333;
+  text-decoration: underline;
+}
+
+/* 또는 구분선 */
+.login-divider {
+  display: flex;
+  align-items: center;
+  margin: 28px 0;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background-color: #e5e5e5;
+}
+
+.login-divider span {
+  padding: 0 16px;
+  color: #999;
+  font-size: 13px;
+}
+
+/* 비회원 주문 버튼 */
+.btn-guest-order {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  background-color: #f0f0f0;
+  color: #333;
+  text-align: center;
+  font-size: 15px;
+  border: none;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.btn-guest-order:hover {
+  background-color: #e5e5e5;
+}
+
 .demo-accounts {
   margin-top: 32px;
   padding-top: 24px;
@@ -93,9 +243,148 @@
   line-height: 1.8;
 }
 
+/* 아이디/비밀번호 찾기 링크 */
+.auth-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.find-link {
+  background: none;
+  border: none;
+  color: var(--secondary-color);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.find-link:hover {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
+.link-divider {
+  color: #ddd;
+  font-size: 12px;
+}
+
+/* 모달 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-content {
+  background: #fff;
+  border-radius: 8px;
+  max-width: 420px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close:hover {
+  color: #333;
+}
+
+/* 찾기 모달 */
+.find-modal {
+  padding: 0;
+}
+
+.find-tabs {
+  display: flex;
+  border-bottom: 1px solid #eee;
+}
+
+.find-tab {
+  flex: 1;
+  padding: 16px;
+  background: none;
+  border: none;
+  font-size: 15px;
+  font-weight: 500;
+  color: #999;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.2s;
+}
+
+.find-tab:hover {
+  color: #666;
+}
+
+.find-tab.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+.find-form {
+  padding: 24px;
+}
+
+.find-desc {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.find-result {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  margin-top: 20px;
+  margin-bottom: 16px;
+  line-height: 1.6;
+  white-space: pre-line;
+  text-align: center;
+}
+
+.find-form .btn {
+  margin-top: 20px;
+}
+
 @media (max-width: 480px) {
   .auth-container {
     padding: 32px 24px;
+  }
+  
+  .find-tab {
+    font-size: 14px;
+    padding: 14px 12px;
   }
 }
 

@@ -189,8 +189,19 @@
 
 .detail-actions {
   display: flex;
+  flex-direction: column;
   gap: 10px;
-  flex-wrap: wrap;
+}
+
+.detail-actions-row {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-half {
+  flex: 1;
+  padding: 14px 16px !important;
+  font-size: 15px !important;
 }
 
 .btn-outline {

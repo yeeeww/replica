@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getUser, updateUser, updateUserPoints } from '../../services/api';
+import { getUser, updateUser, updateUserPoints, getImageUrl } from '../../services/api';
 import { formatPrice, formatDate, getOrderStatusText, getOrderStatusColor } from '../../utils/format';
 
 const AdminUserDetail = () => {
@@ -17,7 +17,10 @@ const AdminUserDetail = () => {
     name: '',
     phone: '',
     role: 'user',
+    gender: '',
     address: '',
+    birthDate: '',
+    customsNumber: '',
     memo: '',
     is_active: true
   });
@@ -43,7 +46,10 @@ const AdminUserDetail = () => {
         name: userData.name || '',
         phone: userData.phone || '',
         role: userData.role || 'user',
+        gender: userData.gender || '',
         address: userData.address || '',
+        birthDate: userData.birth_date ? userData.birth_date.split('T')[0] : '',
+        customsNumber: userData.customs_number || '',
         memo: userData.memo || '',
         is_active: userData.is_active !== false
       });
@@ -165,6 +171,24 @@ const AdminUserDetail = () => {
         {/* 기본 정보 */}
         <div style={sectionStyle}>
           <h3 style={titleStyle}>기본 정보</h3>
+          
+          {/* 프로필 이미지 */}
+          {user.profile_image && (
+            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+              <img 
+                src={getImageUrl(user.profile_image)} 
+                alt="프로필" 
+                style={{ 
+                  width: '80px', 
+                  height: '80px', 
+                  borderRadius: '50%', 
+                  objectFit: 'cover',
+                  border: '2px solid #ddd'
+                }} 
+              />
+            </div>
+          )}
+          
           <div style={rowStyle}>
             <span style={labelStyle}>이메일</span>
             <span>{user.email}</span>
@@ -191,12 +215,46 @@ const AdminUserDetail = () => {
             />
           </div>
           <div style={rowStyle}>
+            <span style={labelStyle}>성별</span>
+            <select
+              name="gender"
+              value={formData.gender}
+              onChange={handleChange}
+              style={{ padding: '6px 10px', border: '1px solid #ddd', borderRadius: '4px' }}
+            >
+              <option value="">선택안함</option>
+              <option value="male">남성</option>
+              <option value="female">여성</option>
+            </select>
+          </div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>생년월일</span>
+            <input
+              type="date"
+              name="birthDate"
+              value={formData.birthDate}
+              onChange={handleChange}
+              style={{ padding: '6px 10px', border: '1px solid #ddd', borderRadius: '4px' }}
+            />
+          </div>
+          <div style={rowStyle}>
             <span style={labelStyle}>주소</span>
             <input
               type="text"
               name="address"
               value={formData.address}
               onChange={handleChange}
+              style={{ flex: 1, padding: '6px 10px', border: '1px solid #ddd', borderRadius: '4px' }}
+            />
+          </div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>개인통관부호</span>
+            <input
+              type="text"
+              name="customsNumber"
+              value={formData.customsNumber}
+              onChange={handleChange}
+              placeholder="P로 시작하는 13자리"
               style={{ flex: 1, padding: '6px 10px', border: '1px solid #ddd', borderRadius: '4px' }}
             />
           </div>

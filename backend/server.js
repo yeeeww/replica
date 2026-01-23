@@ -30,10 +30,40 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/notices', require('./routes/notices'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/banners', require('./routes/banners'));
 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
+});
+
+// 공개 설정 조회 (회원가입 적립금 등 - 인증 불필요)
+const pool = require('./config/database');
+app.get('/api/settings/public', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      "SELECT setting_key, setting_value FROM site_settings WHERE setting_key IN ('register_points', 'purchase_points_rate')"
+    );
+    
+    const settings = {};
+    result.rows.forEach(row => {
+      settings[row.setting_key] = row.setting_value;
+    });
+    
+    res.json({ settings });
+  } catch (error) {
+    console.error('Get public settings error:', error);
+    // 에러 시 기본값 반환
+    res.json({ 
+      settings: {
+        register_points: '5000',
+        purchase_points_rate: '1'
+      }
+    });
+  } finally {
+    client.release();
+  }
 });
 
 // 404 handler

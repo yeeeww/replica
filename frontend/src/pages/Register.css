@@ -1,0 +1,285 @@
+/* Register 페이지 전용 스타일 */
+.register-page {
+  background-color: #fff;
+}
+
+.register-container {
+  max-width: 600px;
+  border: none;
+  padding: 48px 40px;
+}
+
+.register-container h1 {
+  font-family: 'Times New Roman', serif;
+  font-size: 32px;
+  font-weight: 400;
+  margin-bottom: 40px;
+}
+
+/* 프로필 업로드 */
+.profile-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24px;
+  cursor: pointer;
+  position: relative;
+}
+
+.profile-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background-color: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-avatar svg {
+  width: 50px;
+  height: 50px;
+  color: #ccc;
+}
+
+.camera-btn {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.camera-btn svg {
+  width: 16px;
+  height: 16px;
+  color: #666;
+}
+
+/* 안내 문구 */
+.register-notice {
+  background-color: #fff;
+  border-left: 3px solid #f5a623;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+.register-notice p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #666;
+  margin: 0;
+}
+
+/* 폼 스타일 */
+.register-form {
+  gap: 0 !important;
+}
+
+.register-form .form-group {
+  margin-bottom: 0;
+}
+
+.register-form .form-group input,
+.register-form .form-group select {
+  border: none;
+  border-bottom: 1px solid #e5e5e5;
+  border-radius: 0;
+  padding: 16px 0;
+  font-size: 15px;
+  background: transparent;
+}
+
+.register-form .form-group input::placeholder {
+  color: #aaa;
+}
+
+.register-form .form-group input:focus,
+.register-form .form-group select:focus {
+  outline: none;
+  border-bottom-color: #8b5cf6;
+}
+
+.password-hint {
+  font-size: 13px;
+  color: #999;
+  margin: 8px 0 24px;
+}
+
+/* 레이블 있는 폼 그룹 */
+.form-group-labeled {
+  margin-top: 28px !important;
+}
+
+.form-group-labeled label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.required-dot {
+  color: #3b82f6;
+  font-size: 8px;
+  vertical-align: middle;
+  margin-left: 2px;
+}
+
+/* 주소 검색 */
+.address-search-row {
+  display: flex;
+  gap: 8px;
+}
+
+.address-search-row input {
+  flex: 1;
+  cursor: pointer;
+  background-color: #f9f9f9 !important;
+}
+
+.address-search-btn {
+  flex-shrink: 0;
+  padding: 12px 20px;
+  background-color: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.address-search-btn:hover {
+  background-color: #7c3aed;
+}
+
+/* 주소 상세 입력 */
+.address-detail {
+  margin-top: 8px !important;
+}
+
+/* 성별 라디오 버튼 */
+.gender-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 15px;
+  color: #333;
+}
+
+.radio-label input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: #8b5cf6;
+}
+
+/* 생년월일 셀렉트 */
+.birth-selects {
+  display: flex;
+  gap: 12px;
+}
+
+.birth-selects select {
+  flex: 1;
+  padding: 12px 16px !important;
+  border: 1px solid #e5e5e5 !important;
+  border-radius: 4px !important;
+  font-size: 14px;
+  color: #333;
+  background: #fff;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+/* 가입 경로 셀렉트 */
+.form-group-labeled select {
+  padding: 14px 16px !important;
+  border: 1px solid #e5e5e5 !important;
+  border-radius: 4px !important;
+  font-size: 14px;
+  color: #333;
+  background: #fff;
+  cursor: pointer;
+  width: 100%;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+/* 개인통관부호 입력 */
+.form-group-labeled input[name="customsNumber"] {
+  border: 1px solid #e5e5e5 !important;
+  border-radius: 4px !important;
+  padding: 14px 16px !important;
+  min-height: 80px;
+}
+
+/* 가입하기 버튼 */
+.register-submit-btn {
+  margin-top: 32px !important;
+  background-color: #8b5cf6 !important;
+  border: none !important;
+  padding: 16px !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  border-radius: 4px !important;
+}
+
+.register-submit-btn:hover:not(:disabled) {
+  background-color: #7c3aed !important;
+}
+
+.register-submit-btn:disabled {
+  background-color: #ccc !important;
+}
+
+/* 반응형 */
+@media (max-width: 640px) {
+  .register-container {
+    padding: 32px 20px;
+  }
+
+  .register-container h1 {
+    font-size: 26px;
+  }
+
+  .birth-selects {
+    gap: 8px;
+  }
+
+  .birth-selects select {
+    padding: 10px 8px !important;
+    font-size: 13px;
+  }
+}

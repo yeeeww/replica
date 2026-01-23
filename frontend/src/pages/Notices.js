@@ -49,7 +49,6 @@ const Notices = () => {
             <span className="notices-col-num">번호</span>
             <span className="notices-col-title">제목</span>
             <span className="notices-col-date">작성일</span>
-            <span className="notices-col-views">조회</span>
           </div>
 
           {notices.length === 0 ? (
@@ -69,7 +68,6 @@ const Notices = () => {
                   {notice.title}
                 </span>
                 <span className="notices-col-date">{formatDate(notice.created_at)}</span>
-                <span className="notices-col-views">{notice.view_count || 0}</span>
               </Link>
             ))
           )}

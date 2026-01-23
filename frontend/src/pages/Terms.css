@@ -1,0 +1,187 @@
+.terms-page {
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background-color: #f9f9f9;
+}
+
+.terms-container {
+  width: 100%;
+  max-width: 800px;
+  background-color: white;
+  padding: 48px;
+  border: 1px solid var(--border-color);
+}
+
+.terms-container h1 {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 32px;
+}
+
+/* 체크박스 스타일 */
+.terms-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+}
+
+.terms-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #111;
+}
+
+.terms-checkbox .required {
+  color: #8b5cf6;
+  font-size: 13px;
+}
+
+.terms-checkbox-all {
+  padding: 16px 0;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+
+/* 약관 항목 */
+.terms-item {
+  margin-bottom: 20px;
+}
+
+.terms-item .terms-checkbox {
+  margin-bottom: 12px;
+}
+
+.terms-item-simple {
+  padding: 16px 0;
+  border-top: 1px solid #eee;
+  margin-top: 20px;
+}
+
+/* 약관 내용 박스 */
+.terms-content {
+  background-color: #fafafa;
+  border: 1px solid #e5e5e5;
+  padding: 20px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #555;
+}
+
+.terms-content h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin: 16px 0 8px;
+}
+
+.terms-content h3:first-child {
+  margin-top: 0;
+}
+
+.terms-content h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #444;
+  margin: 12px 0 6px;
+}
+
+.terms-content p {
+  margin: 0 0 8px;
+}
+
+.terms-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.terms-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.terms-content::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+.terms-content::-webkit-scrollbar-thumb:hover {
+  background: #aaa;
+}
+
+/* 버튼 */
+.terms-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #eee;
+}
+
+.terms-buttons button {
+  padding: 14px 40px;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel {
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  color: #666;
+}
+
+.btn-cancel:hover {
+  background-color: #eee;
+}
+
+.btn-submit {
+  background-color: #8b5cf6;
+  border: none;
+  color: white;
+}
+
+.btn-submit:hover:not(:disabled) {
+  background-color: #7c3aed;
+}
+
+.btn-submit:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* 반응형 */
+@media (max-width: 640px) {
+  .terms-container {
+    padding: 24px 20px;
+  }
+
+  .terms-container h1 {
+    font-size: 22px;
+    margin-bottom: 24px;
+  }
+
+  .terms-content {
+    max-height: 150px;
+    padding: 16px;
+  }
+
+  .terms-buttons {
+    flex-direction: column;
+  }
+
+  .terms-buttons button {
+    width: 100%;
+  }
+}

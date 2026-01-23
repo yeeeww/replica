@@ -63,6 +63,18 @@ const AdminDashboard = () => {
             Weekly Best 관리
           </Link>
           <Link 
+            to="/admin/points-settings" 
+            className={isActive('/admin/points-settings') ? 'active' : ''}
+          >
+            적립금 설정
+          </Link>
+          <Link 
+            to="/admin/banners" 
+            className={isActive('/admin/banners') ? 'active' : ''}
+          >
+            배너 관리
+          </Link>
+          <Link 
             to="/admin/crawler" 
             className={isActive('/admin/crawler') ? 'active' : ''}
           >

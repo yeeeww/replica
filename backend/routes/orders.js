@@ -4,7 +4,21 @@ const { body } = require('express-validator');
 const orderController = require('../controllers/orderController');
 const { auth, adminAuth } = require('../middleware/auth');
 
-// 모든 라우트에 인증 필요
+// 비회원 주문 조회 (인증 불필요 - auth 미들웨어 위에 위치해야 함)
+router.post('/guest', [
+  body('order_id').notEmpty().withMessage('주문번호를 입력해주세요.'),
+  body('shipping_phone').notEmpty().withMessage('연락처를 입력해주세요.')
+], orderController.getGuestOrder);
+
+// 비회원 주문 생성 (인증 불필요)
+router.post('/guest/create', [
+  body('shipping_name').notEmpty().withMessage('수령인 이름을 입력해주세요.'),
+  body('shipping_phone').notEmpty().withMessage('연락처를 입력해주세요.'),
+  body('shipping_address').notEmpty().withMessage('배송 주소를 입력해주세요.'),
+  body('items').isArray({ min: 1 }).withMessage('주문할 상품을 선택해주세요.')
+], orderController.createGuestOrder);
+
+// 아래 라우트들은 인증 필요
 router.use(auth);
 
 // 주문 목록 조회

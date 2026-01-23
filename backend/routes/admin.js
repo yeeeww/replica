@@ -86,7 +86,9 @@ router.get('/users/:id', auth, adminAuth, async (req, res) => {
     
     // 회원 정보
     const userResult = await client.query(`
-      SELECT u.id, u.email, u.name, u.phone, u.role, u.points, u.address, u.memo, u.is_active, u.created_at, u.last_login_at,
+      SELECT u.id, u.email, u.name, u.phone, u.role, u.points, 
+             u.gender, u.address, u.birth_date, u.customs_number, u.profile_image,
+             u.referral_source, u.memo, u.is_active, u.created_at, u.last_login_at,
         (SELECT COUNT(*) FROM orders WHERE user_id = u.id) as order_count,
         (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE user_id = u.id AND status != 'cancelled') as total_spent
       FROM users u
@@ -134,20 +136,23 @@ router.put('/users/:id', auth, adminAuth, async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
-    const { name, phone, role, address, memo, is_active } = req.body;
+    const { name, phone, role, gender, address, birthDate, customsNumber, memo, is_active } = req.body;
 
     const result = await client.query(`
       UPDATE users SET
         name = COALESCE($1, name),
         phone = $2,
         role = COALESCE($3, role),
-        address = $4,
-        memo = $5,
-        is_active = COALESCE($6, is_active),
+        gender = $4,
+        address = $5,
+        birth_date = $6,
+        customs_number = $7,
+        memo = $8,
+        is_active = COALESCE($9, is_active),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $7
-      RETURNING id, email, name, phone, role, points, address, memo, is_active
-    `, [name, phone || null, role, address || null, memo || null, is_active, id]);
+      WHERE id = $10
+      RETURNING id, email, name, phone, role, points, gender, address, birth_date, customs_number, memo, is_active
+    `, [name, phone || null, role, gender || null, address || null, birthDate || null, customsNumber || null, memo || null, is_active, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: '회원을 찾을 수 없습니다.' });
@@ -641,6 +646,72 @@ router.put('/weekly-best/:categorySlug/order', auth, adminAuth, async (req, res)
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Update weekly best order error:', error);
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+  } finally {
+    client.release();
+  }
+});
+
+// ========== 사이트 설정 관리 ==========
+
+// 설정 조회
+router.get('/settings', auth, adminAuth, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query('SELECT * FROM site_settings ORDER BY id');
+    
+    // 설정을 객체로 변환
+    const settings = {};
+    result.rows.forEach(row => {
+      settings[row.setting_key] = row.setting_value;
+    });
+    
+    res.json({ settings });
+  } catch (error) {
+    console.error('Get settings error:', error);
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+  } finally {
+    client.release();
+  }
+});
+
+// 설정 수정
+router.put('/settings', auth, adminAuth, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { register_points, purchase_points_rate } = req.body;
+    
+    await client.query('BEGIN');
+    
+    if (register_points !== undefined) {
+      await client.query(`
+        INSERT INTO site_settings (setting_key, setting_value, description)
+        VALUES ('register_points', $1, '회원가입 시 지급되는 적립금')
+        ON CONFLICT (setting_key) DO UPDATE SET setting_value = $1, updated_at = CURRENT_TIMESTAMP
+      `, [register_points.toString()]);
+    }
+    
+    if (purchase_points_rate !== undefined) {
+      await client.query(`
+        INSERT INTO site_settings (setting_key, setting_value, description)
+        VALUES ('purchase_points_rate', $1, '구매 시 적립률 (결제금액의 %)')
+        ON CONFLICT (setting_key) DO UPDATE SET setting_value = $1, updated_at = CURRENT_TIMESTAMP
+      `, [purchase_points_rate.toString()]);
+    }
+    
+    await client.query('COMMIT');
+    
+    // 업데이트된 설정 반환
+    const result = await client.query('SELECT * FROM site_settings ORDER BY id');
+    const settings = {};
+    result.rows.forEach(row => {
+      settings[row.setting_key] = row.setting_value;
+    });
+    
+    res.json({ message: '설정이 저장되었습니다.', settings });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Update settings error:', error);
     res.status(500).json({ message: '서버 오류가 발생했습니다.' });
   } finally {
     client.release();

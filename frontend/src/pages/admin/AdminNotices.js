@@ -53,7 +53,6 @@ const AdminNotices = () => {
             <th>ID</th>
             <th>제목</th>
             <th>고정</th>
-            <th>조회수</th>
             <th>작성일</th>
             <th>작업</th>
           </tr>
@@ -71,7 +70,6 @@ const AdminNotices = () => {
                 </Link>
               </td>
               <td>{notice.is_pinned ? '📌 고정' : '-'}</td>
-              <td>{notice.view_count || 0}</td>
               <td>{formatDate(notice.created_at)}</td>
               <td>
                 <div style={{ display: 'flex', gap: '8px' }}>

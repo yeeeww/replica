@@ -53,11 +53,13 @@ export const AuthProvider = ({ children }) => {
 		return response.data;
 	};
 
-	const register = async (email, password, name) => {
+	const register = async (email, password, name, phone, additionalData = {}) => {
 		const response = await axios.post("/auth/register", {
 			email,
 			password,
 			name,
+			phone,
+			...additionalData, // gender, address, birthDate, referralSource, customsNumber, referrer
 		});
 		const { token, user } = response.data;
 		localStorage.setItem("token", token);
@@ -72,12 +74,33 @@ export const AuthProvider = ({ children }) => {
 		setUser(null);
 	};
 
+	// 사용자 정보 새로고침 (적립금 등 업데이트 시 사용)
+	const refreshUser = async () => {
+		try {
+			const response = await axios.get("/auth/me");
+			setUser(response.data.user);
+			return response.data.user;
+		} catch (error) {
+			console.error("Failed to refresh user:", error);
+			return null;
+		}
+	};
+
+	// 로컬에서 포인트만 업데이트 (API 호출 없이)
+	const updateUserPoints = (newPoints) => {
+		if (user) {
+			setUser({ ...user, points: newPoints });
+		}
+	};
+
 	const value = {
 		user,
 		loading,
 		login,
 		register,
 		logout,
+		refreshUser,
+		updateUserPoints,
 		isAuthenticated: !!user,
 		isAdmin: user?.role === "admin",
 	};

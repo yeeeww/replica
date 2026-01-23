@@ -10,6 +10,7 @@
 	background-color: white;
 	padding: 8px 0;
 	border-bottom: 1px solid #f0f0f0;
+	padding-top: 40px; 
 }
 
 .header-top-content {
@@ -42,6 +43,53 @@
 	border-right: none;
 }
 
+/* 회원가입 링크 래퍼 - 떠다니는 배지를 위한 컨테이너 */
+.register-link-wrapper {
+	position: relative;
+	display: inline-block;
+}
+
+/* 떠다니는 포인트 배지 애니메이션 */
+.floating-points-badge {
+	position: absolute;
+	top: -22px;
+	left: 50%;
+	transform: translateX(-50%);
+	background-color: #222;
+	color: #fff;
+	font-size: 10px;
+	font-weight: 600;
+	padding: 3px 8px;
+	border-radius: 3px;
+	white-space: nowrap;
+	animation: floatBounce 2s ease-in-out infinite;
+	z-index: 10;
+}
+
+/* 말풍선 꼬리 */
+.floating-points-badge::after {
+	content: '';
+	position: absolute;
+	bottom: -4px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 0;
+	height: 0;
+	border-left: 5px solid transparent;
+	border-right: 5px solid transparent;
+	border-top: 5px solid #222;
+}
+
+/* 둥둥 떠다니는 애니메이션 */
+@keyframes floatBounce {
+	0%, 100% {
+		transform: translateX(-50%) translateY(0);
+	}
+	50% {
+		transform: translateX(-50%) translateY(-6px);
+	}
+}
+
 .points-badge {
 	background-color: #222;
 	color: #fff;
@@ -62,6 +110,12 @@
 	background: none;
 	border: none;
 	cursor: pointer;
+	padding: 0;
+	margin: 0;
+	line-height: 1;
+	vertical-align: middle;
+	display: inline-flex;
+	align-items: center;
 }
 
 .header-top-right a:hover,
@@ -336,6 +390,17 @@
 
 .mobile-cart-link {
 	position: relative;
+}
+
+/* 모바일 회원가입 떠다니는 배지 */
+.mobile-register {
+	position: relative;
+}
+
+.mobile-register .floating-points-badge {
+	top: -20px;
+	font-size: 9px;
+	padding: 2px 6px;
 }
 
 .mobile-cart-link .cart-badge {

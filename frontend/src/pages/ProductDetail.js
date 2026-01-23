@@ -58,6 +58,7 @@ const ProductDetail = () => {
   }, [id]);
 
   useEffect(() => {
+    window.scrollTo(0, 0);  // 페이지 맨 위로 스크롤
     fetchProduct();
     fetchReviews();  // 초기 로드 시 리뷰 개수도 함께 로드
   }, [fetchProduct, fetchReviews]);
@@ -99,21 +100,21 @@ const ProductDetail = () => {
     }
   };
 
-  const handleAddToCart = async () => {
-    if (!isAuthenticated) {
-      navigate('/login');
-      return;
-    }
-
-    // 옵션이 있는 경우 모든 옵션 선택 확인
+  // 옵션 유효성 검사
+  const validateOptions = () => {
     const optionNames = Object.keys(product.options || {});
     if (optionNames.length > 0) {
       const unselected = optionNames.filter(name => !selectedOptions[name]);
       if (unselected.length > 0) {
         setMessage({ type: "error", text: `${unselected.join(', ')} 옵션을 선택해주세요.` });
-        return;
+        return false;
       }
     }
+    return true;
+  };
+
+  const handleAddToCart = async () => {
+    if (!validateOptions()) return;
 
     try {
       const optionsString = Object.entries(selectedOptions)
@@ -128,6 +129,33 @@ const ProductDetail = () => {
         text: error.response?.data?.message || "장바구니 추가에 실패했습니다." 
       });
     }
+  };
+
+  // 바로 구매하기 (비회원도 가능)
+  const handleBuyNow = () => {
+    if (!validateOptions()) return;
+
+    const optionsString = Object.entries(selectedOptions)
+      .map(([name, value]) => `${name}: ${value}`)
+      .join(', ');
+
+    // 구매할 상품 정보를 state로 전달
+    const buyItem = {
+      product_id: product.id,
+      product_name: product.name,
+      product_price: calculateTotalPrice(),
+      image_url: product.image_url,
+      quantity: quantity,
+      options: optionsString
+    };
+
+    navigate('/checkout', { 
+      state: { 
+        buyNow: true,
+        item: buyItem,
+        isGuest: !isAuthenticated
+      } 
+    });
   };
 
   const handleOptionChange = (optionName, value) => {
@@ -211,17 +239,6 @@ const ProductDetail = () => {
               </p>
             </div>
 
-            <div className="product-meta">
-              <div className="meta-row">
-                <span>적립</span>
-                <span>2,550 적립금 지급(예시)</span>
-              </div>
-              <div className="meta-row">
-                <span>배송비</span>
-                <span>무료 (5만원 이상 무료배송)</span>
-              </div>
-            </div>
-
             {/* 옵션 선택 */}
             {product.options && Object.keys(product.options).length > 0 && (
               <div className="product-options">
@@ -247,11 +264,7 @@ const ProductDetail = () => {
               </div>
             )}
 
-            <div className="product-detail-stock">
-              재고: {product.stock > 0 ? `${product.stock}개` : "품절"}
-            </div>
-
-            {product.stock > 0 && (
+            {product.stock > 0 ? (
               <>
                 <div className="quantity-selector">
                   <label>수량</label>
@@ -263,20 +276,26 @@ const ProductDetail = () => {
                 </div>
 
                 <div className="detail-actions">
-                  <button 
-                    className="btn btn-primary btn-full"
-                    onClick={handleAddToCart}
-                  >
-                    장바구니에 담기
-                  </button>
-                  <button 
-                    className="btn btn-outline"
-                    onClick={() => navigate("/products")}
-                  >
-                    계속 쇼핑하기
-                  </button>
+                  <div className="detail-actions-row">
+                    <button 
+                      className="btn btn-outline btn-half"
+                      onClick={handleAddToCart}
+                    >
+                      장바구니
+                    </button>
+                    <button 
+                      className="btn btn-primary btn-half"
+                      onClick={handleBuyNow}
+                    >
+                      구매하기
+                    </button>
+                  </div>
                 </div>
               </>
+            ) : (
+              <div className="product-detail-soldout">
+                <p>현재 품절된 상품입니다.</p>
+              </div>
             )}
           </div>
         </div>

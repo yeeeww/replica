@@ -69,7 +69,6 @@ const NoticeDetail = () => {
           <div className="notice-detail-meta">
             <span>작성자: {notice.author_name || '관리자'}</span>
             <span>작성일: {formatDate(notice.created_at)}</span>
-            <span>조회수: {notice.view_count || 0}</span>
           </div>
         </div>
 

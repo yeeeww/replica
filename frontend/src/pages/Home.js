@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getProducts } from "../services/api";
+import { getProducts, getBanners, getImageUrl } from "../services/api";
 import "./Home.css";
 
 const Home = () => {
@@ -14,6 +14,10 @@ const Home = () => {
 	const [popularLoading, setPopularLoading] = useState(false);
 	const [popularItems, setPopularItems] = useState({});
 	const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+	
+	// 배너 데이터 (DB에서 로드)
+	const [bannerSlides, setBannerSlides] = useState([]);
+	const [categoryBanners, setCategoryBanners] = useState([]);
 
 	// 화면 크기 감지
 	useEffect(() => {
@@ -24,28 +28,38 @@ const Home = () => {
 		return () => window.removeEventListener("resize", handleResize);
 	}, []);
 
-	const bannerSlides = [
-		{
-			id: 1,
-			image: "https://jpound2024.cafe24.com/images/slider/main/1_2.webp",
-			mobileImage: "https://jpound2024.cafe24.com/images/slider/main/1_2_m.webp",
-		},
-		{
-			id: 2,
-			image: "https://jpound2024.cafe24.com/images/slider/main/7_4.webp",
-			mobileImage: "https://jpound2024.cafe24.com/images/slider/main/7_4_m.webp",
-		},
-		{
-			id: 3,
-			image: "https://jpound2024.cafe24.com/images/slider/main/1_898.jpg",
-			mobileImage: "https://jpound2024.cafe24.com/images/slider/main/1_898_m.jpg",
-		},
-		{
-			id: 4,
-			image: "https://jpound2024.cafe24.com/images/slider/main/1_1.webp",
-			mobileImage: "https://jpound2024.cafe24.com/images/slider/main/1_88_m.webp",
-		},
-	];
+	// 배너 데이터 로드
+	useEffect(() => {
+		const fetchBanners = async () => {
+			try {
+				// 메인 슬라이드 배너
+				const mainRes = await getBanners('main');
+				const mainBanners = (mainRes.data.banners || []).map(b => ({
+					id: b.id,
+					image: b.image_url,
+					mobileImage: b.mobile_image_url || b.image_url,
+					link: b.link_url
+				}));
+				setBannerSlides(mainBanners);
+
+				// 카테고리 섹션 배너
+				const catRes = await getBanners('category');
+				const catBanners = (catRes.data.banners || []).map(b => ({
+					slug: b.category_slug,
+					title: b.title,
+					subtitle: b.subtitle,
+					banner: b.image_url,
+					mobileBanner: b.mobile_image_url || b.image_url,
+					link: b.link_url
+				}));
+				setCategoryBanners(catBanners);
+			} catch (error) {
+				console.error('Failed to fetch banners:', error);
+				// 기본값 유지 (빈 배열)
+			}
+		};
+		fetchBanners();
+	}, []);
 
 	useEffect(() => {
 		fetchFeaturedProducts();
@@ -65,11 +79,13 @@ const Home = () => {
 	};
 
 	useEffect(() => {
+		const slidesLen = bannerSlides.length > 0 ? bannerSlides.length : 4; // 기본 4개
 		const timer = setInterval(() => {
-			setCurrentSlide((prev) => (prev + 1) % bannerSlides.length);
+			setCurrentSlide((prev) => (prev + 1) % slidesLen);
 		}, 5000);
 
 		return () => clearInterval(timer);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [bannerSlides.length]);
 
 	const fetchFeaturedProducts = async () => {
@@ -85,13 +101,13 @@ const Home = () => {
 	};
 
 	const nextSlide = () => {
-		setCurrentSlide((prev) => (prev + 1) % bannerSlides.length);
+		const len = bannerSlides.length > 0 ? bannerSlides.length : 4;
+		setCurrentSlide((prev) => (prev + 1) % len);
 	};
 
 	const prevSlide = () => {
-		setCurrentSlide(
-			(prev) => (prev - 1 + bannerSlides.length) % bannerSlides.length
-		);
+		const len = bannerSlides.length > 0 ? bannerSlides.length : 4;
+		setCurrentSlide((prev) => (prev - 1 + len) % len);
 	};
 
 	const goToSlide = (index) => {
@@ -136,8 +152,8 @@ const Home = () => {
 		},
 	];
 
-	// 인기상품 중 카테고리별 BEST 섹션
-	const popularSections = [
+	// 인기상품 중 카테고리별 BEST 섹션 (DB 배너가 없으면 기본값 사용)
+	const popularSections = categoryBanners.length > 0 ? categoryBanners : [
 		{
 			slug: "bag",
 			title: "BEST Bags Collection",
@@ -225,18 +241,52 @@ const Home = () => {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
+	// 기본 슬라이드 배너 (DB에서 로드 전 또는 실패 시)
+	const defaultBannerSlides = [
+		{
+			id: 1,
+			image: "https://jpound2024.cafe24.com/images/slider/main/1_2.webp",
+			mobileImage: "https://jpound2024.cafe24.com/images/slider/main/1_2_m.webp",
+		},
+		{
+			id: 2,
+			image: "https://jpound2024.cafe24.com/images/slider/main/7_4.webp",
+			mobileImage: "https://jpound2024.cafe24.com/images/slider/main/7_4_m.webp",
+		},
+		{
+			id: 3,
+			image: "https://jpound2024.cafe24.com/images/slider/main/1_898.jpg",
+			mobileImage: "https://jpound2024.cafe24.com/images/slider/main/1_898_m.jpg",
+		},
+		{
+			id: 4,
+			image: "https://jpound2024.cafe24.com/images/slider/main/1_1.webp",
+			mobileImage: "https://jpound2024.cafe24.com/images/slider/main/1_88_m.webp",
+		},
+	];
+
+	const activeBannerSlides = bannerSlides.length > 0 ? bannerSlides : defaultBannerSlides;
+
 	return (
 		<div className="home">
 			{/* 이미지 슬라이드 배너 */}
 			<section className="hero-slider">
 				<div className="slider-container">
-					{bannerSlides.map((slide, index) => (
-						<div
-							key={slide.id}
-							className={`slide ${index === currentSlide ? "active" : ""}`}
-							style={{ backgroundImage: `url(${isMobile ? slide.mobileImage : slide.image})` }}>
-						</div>
-					))}
+					{activeBannerSlides.map((slide, index) => {
+						const slideContent = (
+							<div
+								key={slide.id}
+								className={`slide ${index === currentSlide ? "active" : ""}`}
+								style={{ backgroundImage: `url(${getImageUrl(isMobile ? slide.mobileImage : slide.image)})` }}>
+							</div>
+						);
+						
+						return slide.link ? (
+							<Link key={slide.id} to={slide.link} style={{ display: index === currentSlide ? 'block' : 'none' }}>
+								{slideContent}
+							</Link>
+						) : slideContent;
+					})}
 				</div>
 
 				{/* 슬라이드 컨트롤 */}
@@ -249,7 +299,7 @@ const Home = () => {
 
 				{/* 슬라이드 인디케이터 */}
 				<div className="slider-indicators">
-					{bannerSlides.map((_, index) => (
+					{activeBannerSlides.map((_, index) => (
 						<button
 							key={index}
 							className={`indicator ${index === currentSlide ? "active" : ""}`}
@@ -390,12 +440,13 @@ const Home = () => {
 			{popularSections.map((section) => {
 				const items = popularItems[section.slug] || [];
 				const bannerUrl = isMobile ? section.mobileBanner : section.banner;
+				const linkUrl = section.link || `/products?category=${section.slug}`;
 				return (
 					<section className="popular-section" key={section.slug}>
 						<Link
-							to={`/products?category=${section.slug}`}
+							to={linkUrl}
 							className="popular-hero"
-							style={{ backgroundImage: `url(${bannerUrl})` }}>
+							style={{ backgroundImage: `url(${getImageUrl(bannerUrl)})` }}>
 						</Link>
 						<div className="container">
 							<div className="popular-body">

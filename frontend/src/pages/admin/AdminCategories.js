@@ -209,13 +209,38 @@ const AdminCategories = () => {
     setSelectedDepth2('');
   };
 
-  // 카테고리를 계층 구조로 그룹화
+  // 카테고리를 계층 구조로 그룹화 (대분류별 정렬)
   const getGroupedCategories = () => {
     const depth1Cats = allCategories.filter(c => c.depth === 1);
     const depth2Cats = allCategories.filter(c => c.depth === 2);
     const depth3Cats = allCategories.filter(c => c.depth === 3);
     
-    return { depth1Cats, depth2Cats, depth3Cats };
+    // 중분류를 대분류별로 정렬
+    const sortedDepth2Cats = [...depth2Cats].sort((a, b) => {
+      // 먼저 parent_slug(대분류)로 정렬
+      if (a.parent_slug !== b.parent_slug) {
+        const aParentIndex = depth1Cats.findIndex(d => d.slug === a.parent_slug);
+        const bParentIndex = depth1Cats.findIndex(d => d.slug === b.parent_slug);
+        return aParentIndex - bParentIndex;
+      }
+      // 같은 대분류 내에서는 이름으로 정렬
+      return a.name.localeCompare(b.name, 'ko');
+    });
+
+    // 소분류를 대분류 > 중분류별로 정렬
+    const sortedDepth3Cats = [...depth3Cats].sort((a, b) => {
+      const aParentSlug = a.parent_slug || '';
+      const bParentSlug = b.parent_slug || '';
+      
+      // parent_slug로 정렬 (대분류-중분류 순서)
+      if (aParentSlug !== bParentSlug) {
+        return aParentSlug.localeCompare(bParentSlug, 'ko');
+      }
+      // 같은 중분류 내에서는 이름으로 정렬
+      return a.name.localeCompare(b.name, 'ko');
+    });
+    
+    return { depth1Cats, depth2Cats: sortedDepth2Cats, depth3Cats: sortedDepth3Cats };
   };
 
   // 뎁스별 색상

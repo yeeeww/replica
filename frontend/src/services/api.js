@@ -43,6 +43,8 @@ export const deleteCategory = (id) => axios.delete(`/categories/${id}`);
 export const getOrders = (params) => axios.get(`/orders`, { params });
 export const getOrder = (id) => axios.get(`/orders/${id}`);
 export const createOrder = (data) => axios.post(`/orders`, data);
+export const createGuestOrder = (data) => axios.post(`/orders/guest/create`, data);
+export const getGuestOrder = (data) => axios.post(`/orders/guest`, data);
 export const updateOrderStatus = (id, data) =>
 	axios.patch(`/orders/${id}/status`, data);
 
@@ -100,3 +102,21 @@ export const uploadImages = (files) => {
     headers: { 'Content-Type': 'multipart/form-data' }
   });
 };
+
+// Admin - Settings (적립금 설정)
+export const getAdminSettings = () => axios.get(`/admin/settings`);
+export const updateAdminSettings = (data) => axios.put(`/admin/settings`, data);
+
+// Public Settings (회원가입 적립금 등 - 인증 불필요)
+export const getPublicSettings = () => axios.get(`/settings/public`);
+
+// User Points (사용자 적립금 조회)
+export const getUserPoints = () => axios.get(`/auth/me`);
+
+// User Profile (마이페이지)
+export const getUserProfile = () => axios.get(`/auth/profile`);
+export const updateUserProfile = (data) => axios.put(`/auth/profile`, data);
+export const changePassword = (data) => axios.put(`/auth/password`, data);
+
+// Banners (배너)
+export const getBanners = (type) => axios.get(`/banners`, { params: { type } });

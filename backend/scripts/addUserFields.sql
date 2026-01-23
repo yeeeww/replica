@@ -1,24 +1,23 @@
--- Add additional fields to users table
--- Run: psql -U postgres -d modern_shop -f addUserFields.sql
+-- Add additional user fields for registration
+-- Run this script to add new columns to the users table
 
-ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
-ALTER TABLE users ADD COLUMN IF NOT EXISTS points INTEGER DEFAULT 0;
+-- Add gender column
+ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(10);
+
+-- Add address column
 ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS memo TEXT;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP;
 
--- Points history table
-CREATE TABLE IF NOT EXISTS points_history (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-  amount INTEGER NOT NULL,
-  type VARCHAR(50) NOT NULL,
-  description TEXT,
-  order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
-  admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Add birth_date column
+ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date DATE;
 
--- Verify
-SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'users' ORDER BY ordinal_position;
+-- Add referral_source column (how user found the site)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_source VARCHAR(50);
+
+-- Add customs_number column (personal customs clearance code)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS customs_number VARCHAR(50);
+
+-- Add referrer column (who referred the user)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS referrer VARCHAR(100);
+
+-- Add profile_image column
+ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image VARCHAR(500);
