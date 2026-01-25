@@ -149,22 +149,48 @@ const Products = () => {
 		return categoryKoreanNames[subType] || originalName;
 	};
 
+	// 중분류 순서 정의 (대분류별)
+	const subCategoryOrder = {
+		// 남성, 여성: 가방, 지갑, 시계, 신발, 벨트, 악세서리, 모자, 의류, 선글라스&안경, 기타
+		'men': ['bag', 'wallet', 'watch', 'shoes', 'belt', 'accessory', 'hat', 'clothing', 'glasses', 'etc'],
+		'women': ['bag', 'wallet', 'watch', 'shoes', 'belt', 'accessory', 'hat', 'clothing', 'glasses', 'etc'],
+		// 국내출고상품: 가방&지갑, 의류, 신발, 모자, 악세서리, 시계, 패션잡화, 생활&주방용품, 벨트, 향수, 라이터
+		'domestic': ['bag-wallet', 'clothing', 'shoes', 'hat', 'accessory', 'watch', 'fashion-acc', 'home-kitchen', 'belt', 'perfume', 'lighter']
+	};
+
 	// 현재 대분류의 중분류 목록 (카테고리 아이콘용)
 	const depth2Categories = useMemo(() => {
 		if (!currentMainCategory || !currentMainCategory.children) return [];
-		return currentMainCategory.children.map(cat => {
+		
+		const categories = currentMainCategory.children.map(cat => {
 			const parts = cat.slug.split("-");
 			const subType = parts.slice(1).join("-");
 			const image = categoryIconImages[subType] || categoryIconImages["etc"];
 			const koreanName = getKoreanCategoryName(cat.slug, cat.name);
 			return {
 				...cat,
+				subType,
 				image,
 				label: `하이엔드 ${koreanName}`
 			};
 		});
+
+		// 순서 정렬
+		const order = subCategoryOrder[deriveMain];
+		if (order) {
+			categories.sort((a, b) => {
+				const aIdx = order.indexOf(a.subType);
+				const bIdx = order.indexOf(b.subType);
+				if (aIdx === -1 && bIdx === -1) return 0;
+				if (aIdx === -1) return 1;
+				if (bIdx === -1) return -1;
+				return aIdx - bIdx;
+			});
+		}
+
+		return categories;
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [currentMainCategory]);
+	}, [currentMainCategory, deriveMain]);
 
 	const sortOptions = [
 		{ value: "recent", label: "등록순" },

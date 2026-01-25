@@ -280,9 +280,12 @@ exports.getOrder = async (req, res) => {
 
     const order = orderResult.rows[0];
 
-    // 주문 상품 조회
+    // 주문 상품 조회 (상품 이미지 포함)
     const itemsResult = await client.query(
-      'SELECT * FROM order_items WHERE order_id = $1',
+      `SELECT oi.*, p.image_url 
+       FROM order_items oi
+       LEFT JOIN products p ON oi.product_id = p.id
+       WHERE oi.order_id = $1`,
       [id]
     );
 

@@ -322,7 +322,25 @@ const AdminOrders = () => {
                   {order.product_names || '-'}
                 </div>
               </td>
-              <td>{formatPrice(order.total_amount)}</td>
+              <td>
+                <div style={{ fontSize: '13px' }}>
+                  {order.used_points > 0 ? (
+                    <>
+                      <div style={{ color: '#999', textDecoration: 'line-through', fontSize: '11px' }}>
+                        {formatPrice(order.total_amount)}
+                      </div>
+                      <div style={{ color: '#007bff', fontWeight: '600' }}>
+                        {formatPrice(order.total_amount - order.used_points)}
+                      </div>
+                      <div style={{ color: '#dc3545', fontSize: '11px' }}>
+                        (-{order.used_points.toLocaleString()}P)
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontWeight: '500' }}>{formatPrice(order.total_amount)}</div>
+                  )}
+                </div>
+              </td>
               <td>
                 <span style={{ color: getOrderStatusColor(order.status) }}>
                   {getOrderStatusText(order.status)}

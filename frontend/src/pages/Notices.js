@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getNotices } from '../services/api';
-import { formatDate } from '../utils/format';
+import { formatDateShort } from '../utils/format';
 import './Notices.css';
 
 const Notices = () => {
@@ -67,7 +67,7 @@ const Notices = () => {
                   {notice.is_pinned && <span className="notice-badge">공지</span>}
                   {notice.title}
                 </span>
-                <span className="notices-col-date">{formatDate(notice.created_at)}</span>
+                <span className="notices-col-date">{formatDateShort(notice.created_at)}</span>
               </Link>
             ))
           )}

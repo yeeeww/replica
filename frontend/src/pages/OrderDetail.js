@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
-import { getOrder } from '../services/api';
+import { useParams, useLocation, Link } from 'react-router-dom';
+import { getOrder, getImageUrl } from '../services/api';
 import { formatPrice, formatDate, getOrderStatusText, getOrderStatusColor } from '../utils/format';
 import './OrderDetail.css';
 
@@ -108,8 +108,17 @@ const OrderDetail = () => {
             <div className="order-items">
               {order.items.map((item) => (
                 <div key={item.id} className="order-item">
+                  <Link to={`/products/${item.product_id}`} className="order-item-image-link">
+                    <img 
+                      src={getImageUrl(item.image_url)} 
+                      alt={item.product_name}
+                      className="order-item-image"
+                    />
+                  </Link>
                   <div className="order-item-info">
-                    <p className="order-item-name">{item.product_name}</p>
+                    <Link to={`/products/${item.product_id}`} className="order-item-name-link">
+                      <p className="order-item-name">{item.product_name}</p>
+                    </Link>
                     <p className="order-item-quantity">수량: {item.quantity}</p>
                   </div>
                   <p className="order-item-price">
@@ -158,6 +167,12 @@ const OrderDetail = () => {
                 <span>상품 금액</span>
                 <span>{formatPrice(order.total_amount)}</span>
               </div>
+              <div className="order-payment-row order-payment-discount">
+                <span>적립금 사용</span>
+                <span className={order.used_points > 0 ? '' : 'no-discount'}>
+                  {order.used_points > 0 ? `-${formatPrice(order.used_points)}` : '0원'}
+                </span>
+              </div>
               <div className="order-payment-row">
                 <span>배송비</span>
                 <span>무료</span>
@@ -168,7 +183,15 @@ const OrderDetail = () => {
               </div>
               <div className="order-payment-total">
                 <span>총 결제 금액</span>
-                <span>{formatPrice(order.total_amount)}</span>
+                <span>{formatPrice(order.total_amount - (order.used_points || 0))}</span>
+              </div>
+              <div className="order-payment-row order-payment-points">
+                <span>적립 예정</span>
+                <span className={order.earned_points > 0 ? '' : 'no-points'}>
+                  {order.earned_points > 0 
+                    ? `+${order.earned_points.toLocaleString()}P ${order.status === 'delivered' ? '(지급완료)' : '(배송완료 시 지급)'}`
+                    : '0P'}
+                </span>
               </div>
             </div>
           </div>

@@ -15,6 +15,14 @@ export const formatDate = (date) => {
   }).format(new Date(date));
 };
 
+export const formatDateShort = (date) => {
+  return new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date(date));
+};
+
 export const getOrderStatusText = (status) => {
   const statusMap = {
     pending: '주문 접수',

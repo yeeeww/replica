@@ -401,6 +401,8 @@
 	top: -20px;
 	font-size: 9px;
 	padding: 2px 6px;
+	color: #fff !important;
+	background-color: #222;
 }
 
 .mobile-cart-link .cart-badge {

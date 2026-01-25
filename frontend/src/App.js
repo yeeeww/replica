@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 
@@ -39,6 +39,17 @@ import AdminWeeklyBest from './pages/admin/AdminWeeklyBest';
 import AdminPointsSettings from './pages/admin/AdminPointsSettings';
 import AdminBanners from './pages/admin/AdminBanners';
 
+// 페이지 이동 시 스크롤 최상단으로 이동
+const ScrollToTop = () => {
+  const { pathname, search } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname, search]);
+
+  return null;
+};
+
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -66,6 +77,7 @@ function App() {
     <Router>
       <AuthProvider>
         <CartProvider>
+          <ScrollToTop />
           <div className="app">
             <Header />
             <main style={{ minHeight: 'calc(100vh - 200px)' }}>

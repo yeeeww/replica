@@ -116,6 +116,35 @@ const Header = () => {
     // 대분류 순서 정의
     const mainOrder = ['men', 'women', 'domestic', 'recommend', 'hot', 'popular'];
 
+    // 중분류 순서 정의 (대분류별)
+    const subOrderMap = {
+      // 남성, 여성: 가방, 지갑, 시계, 신발, 벨트, 악세서리, 모자, 의류, 선글라스&안경, 기타
+      'men': ['bag', 'wallet', 'watch', 'shoes', 'belt', 'accessory', 'hat', 'clothing', 'glasses', 'etc'],
+      'women': ['bag', 'wallet', 'watch', 'shoes', 'belt', 'accessory', 'hat', 'clothing', 'glasses', 'etc'],
+      // 국내출고상품: 가방&지갑, 의류, 신발, 모자, 악세서리, 시계, 패션잡화, 생활&주방용품, 벨트, 향수, 라이터
+      'domestic': ['bag-wallet', 'clothing', 'shoes', 'hat', 'accessory', 'watch', 'fashion', 'fashion-acc', 'home', 'home-kitchen', 'belt', 'perfume', 'lighter']
+    };
+
+    // 중분류 정렬 함수
+    const sortSubCategories = (parentSlug, children) => {
+      const order = subOrderMap[parentSlug];
+      if (!order) return children;
+
+      return children.sort((a, b) => {
+        // slug에서 중분류 부분 추출 (예: men-bag -> bag)
+        const aSubSlug = a.slug.replace(`${parentSlug}-`, '');
+        const bSubSlug = b.slug.replace(`${parentSlug}-`, '');
+        
+        const aIdx = order.indexOf(aSubSlug);
+        const bIdx = order.indexOf(bSubSlug);
+        
+        if (aIdx === -1 && bIdx === -1) return 0;
+        if (aIdx === -1) return 1;
+        if (bIdx === -1) return -1;
+        return aIdx - bIdx;
+      });
+    };
+
     const menu = depth1Cats
       .sort((a, b) => {
         const aIdx = mainOrder.indexOf(a.slug);
@@ -142,10 +171,13 @@ const Header = () => {
             slug: d2.slug,
           }));
 
+        // 중분류 정렬
+        const sortedChildren = sortSubCategories(d1.slug, children);
+
         return {
           label: getKoreanName(d1.slug, d1.name),
           slug: d1.slug,
-          children: children.length > 0 ? children : undefined,
+          children: sortedChildren.length > 0 ? sortedChildren : undefined,
         };
       });
 

@@ -273,11 +273,13 @@ const Home = () => {
 			<section className="hero-slider">
 				<div className="slider-container">
 					{activeBannerSlides.map((slide, index) => {
+						const imageUrl = getImageUrl(isMobile ? slide.mobileImage : slide.image);
 						const slideContent = (
 							<div
 								key={slide.id}
 								className={`slide ${index === currentSlide ? "active" : ""}`}
-								style={{ backgroundImage: `url(${getImageUrl(isMobile ? slide.mobileImage : slide.image)})` }}>
+								style={{ backgroundImage: isMobile ? 'none' : `url(${imageUrl})` }}>
+								{isMobile && <img src={imageUrl} alt={slide.title || '배너'} />}
 							</div>
 						);
 						

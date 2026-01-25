@@ -113,8 +113,22 @@ const Register = () => {
     e.preventDefault();
     setError('');
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('비밀번호가 일치하지 않습니다.');
+    // 이메일 검사
+    if (!formData.email) {
+      setError('이메일을 입력해주세요.');
+      return;
+    }
+
+    // 이메일 형식 검사
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('올바른 이메일 형식을 입력해주세요.');
+      return;
+    }
+
+    // 비밀번호 입력 검사
+    if (!formData.password) {
+      setError('비밀번호를 입력해주세요.');
       return;
     }
 
@@ -130,6 +144,17 @@ const Register = () => {
       return;
     }
 
+    // 비밀번호 확인 검사
+    if (!formData.confirmPassword) {
+      setError('비밀번호 확인을 입력해주세요.');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
     if (!formData.name) {
       setError('이름을 입력해주세요.');
       return;
@@ -137,6 +162,14 @@ const Register = () => {
 
     if (!formData.phone) {
       setError('연락처를 입력해주세요.');
+      return;
+    }
+
+    // 연락처 형식 검사 (숫자만, 10-11자리)
+    const phoneRegex = /^[0-9]{10,11}$/;
+    const phoneNumber = formData.phone.replace(/-/g, '');
+    if (!phoneRegex.test(phoneNumber)) {
+      setError('올바른 연락처 형식을 입력해주세요. (예: 01012345678)');
       return;
     }
 
@@ -219,7 +252,7 @@ const Register = () => {
         
         {error && <div className="error">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="auth-form register-form">
+        <form onSubmit={handleSubmit} className="auth-form register-form" noValidate>
           {/* 이메일 */}
           <div className="form-group">
             <input
@@ -229,7 +262,6 @@ const Register = () => {
               value={formData.email}
               onChange={handleChange}
               placeholder="이메일"
-              required
             />
           </div>
 
@@ -242,8 +274,6 @@ const Register = () => {
               value={formData.password}
               onChange={handleChange}
               placeholder="비밀번호"
-              required
-              minLength="8"
             />
           </div>
 
@@ -256,7 +286,6 @@ const Register = () => {
               value={formData.confirmPassword}
               onChange={handleChange}
               placeholder="비밀번호 확인"
-              required
             />
           </div>
           <p className="password-hint">8자리 이상의 대소문자, 숫자, 특수문자를 사용해 주세요.</p>
@@ -271,7 +300,6 @@ const Register = () => {
               value={formData.name}
               onChange={handleChange}
               placeholder="이름을(를) 입력하세요"
-              required
             />
           </div>
 
@@ -311,8 +339,7 @@ const Register = () => {
               name="phone"
               value={formData.phone}
               onChange={handleChange}
-              placeholder="연락처"
-              required
+              placeholder="연락처 (예: 01012345678)"
             />
           </div>
 
@@ -327,7 +354,6 @@ const Register = () => {
                 value={formData.address}
                 onChange={handleChange}
                 placeholder="주소를 검색해주세요"
-                required
                 readOnly
                 onClick={handleAddressSearch}
               />

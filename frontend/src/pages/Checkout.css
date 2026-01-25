@@ -519,7 +519,7 @@
 
   .checkout-right {
     position: static;
-    order: -1;
+    order: 1;
   }
 }
 

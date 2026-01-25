@@ -160,9 +160,29 @@ const AdminOrderDetail = () => {
             <span style={valueStyle}>{formatDate(order.created_at)}</span>
           </div>
           <div style={rowStyle}>
-            <span style={labelStyle}>결제금액</span>
-            <span style={{ ...valueStyle, fontWeight: '600', color: '#007bff' }}>
+            <span style={labelStyle}>상품금액</span>
+            <span style={valueStyle}>
               {formatPrice(order.total_amount)}
+            </span>
+          </div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>적립금 사용</span>
+            <span style={{ ...valueStyle, color: order.used_points > 0 ? '#dc3545' : '#999' }}>
+              {order.used_points > 0 ? `-${formatPrice(order.used_points)}` : '0원'}
+            </span>
+          </div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>실 결제금액</span>
+            <span style={{ ...valueStyle, fontWeight: '600', color: '#007bff' }}>
+              {formatPrice(order.total_amount - (order.used_points || 0))}
+            </span>
+          </div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>적립 예정</span>
+            <span style={{ ...valueStyle, color: order.earned_points > 0 ? '#28a745' : '#999' }}>
+              {order.earned_points > 0 
+                ? `+${order.earned_points.toLocaleString()}P${order.status === 'delivered' ? ' (지급완료)' : ''}`
+                : '0P'}
             </span>
           </div>
           <div style={rowStyle}>
@@ -317,11 +337,29 @@ const AdminOrderDetail = () => {
           </tbody>
           <tfoot>
             <tr style={{ backgroundColor: '#f8f9fa' }}>
+              <td colSpan="4" style={{ padding: '12px', textAlign: 'right', fontWeight: '500' }}>
+                상품금액
+              </td>
+              <td style={{ padding: '12px', textAlign: 'right', fontWeight: '600' }}>
+                {formatPrice(order.total_amount)}
+              </td>
+            </tr>
+            {order.used_points > 0 && (
+              <tr style={{ backgroundColor: '#fff3cd' }}>
+                <td colSpan="4" style={{ padding: '12px', textAlign: 'right', fontWeight: '500', color: '#856404' }}>
+                  적립금 사용
+                </td>
+                <td style={{ padding: '12px', textAlign: 'right', fontWeight: '600', color: '#dc3545' }}>
+                  -{formatPrice(order.used_points)}
+                </td>
+              </tr>
+            )}
+            <tr style={{ backgroundColor: '#e7f3ff' }}>
               <td colSpan="4" style={{ padding: '12px', textAlign: 'right', fontWeight: '600' }}>
-                총 결제금액
+                실 결제금액
               </td>
               <td style={{ padding: '12px', textAlign: 'right', fontWeight: '700', fontSize: '16px', color: '#007bff' }}>
-                {formatPrice(order.total_amount)}
+                {formatPrice(order.total_amount - (order.used_points || 0))}
               </td>
             </tr>
           </tfoot>
