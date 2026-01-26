@@ -19,6 +19,18 @@ const Home = () => {
 	const [bannerSlides, setBannerSlides] = useState([]);
 	const [categoryBanners, setCategoryBanners] = useState([]);
 
+	// 인기 섹션 슬러그 표준화 (인기상품 페이지 카테고리와 동일하게 이동)
+	const normalizePopularSlug = (slug) => {
+		if (!slug) return slug;
+		const lower = slug.toLowerCase();
+		if (['acc', 'accessories', 'accessory'].includes(lower)) return 'accessory';
+		if (['bag', 'bags'].includes(lower)) return 'bag';
+		if (['cloth', 'clothes', 'clothing'].includes(lower)) return 'clothing';
+		if (['watch', 'watches'].includes(lower)) return 'watch';
+		if (['shoe', 'shoes'].includes(lower)) return 'shoes';
+		return lower;
+	};
+
 	// 화면 크기 감지
 	useEffect(() => {
 		const handleResize = () => {
@@ -45,7 +57,7 @@ const Home = () => {
 				// 카테고리 섹션 배너
 				const catRes = await getBanners('category');
 				const catBanners = (catRes.data.banners || []).map(b => ({
-					slug: b.category_slug,
+					slug: normalizePopularSlug(b.category_slug),
 					title: b.title,
 					subtitle: b.subtitle,
 					banner: b.image_url,
@@ -169,9 +181,9 @@ const Home = () => {
 			mobileBanner: "https://jpound2024.cafe24.com/images/slider/main/2_3_m.webp"
 		},
 		{
-			slug: "shoes",
-			title: "BEST Shoes Collection",
-			subtitle: "베스트 신발 모아보기",
+			slug: "accessory",
+			title: "BEST Accessory Collection",
+			subtitle: "베스트 액세서리 모아보기",
 			banner: "https://jpound2024.cafe24.com/images/slider/main/5_4.webp",
 			mobileBanner: "https://jpound2024.cafe24.com/images/slider/main/5_5.webp"
 		},
@@ -197,8 +209,9 @@ const Home = () => {
 				// 인기상품(is_popular=true) 중 해당 카테고리 상품만 가져오기
 				const results = await Promise.all(
 					popularSections.map(async (section) => {
-						const res = await getProducts({ popular_category: section.slug, limit: 4 });
-						return { slug: section.slug, items: res.data.products || [] };
+						const fetchSlug = normalizePopularSlug(section.slug);
+						const res = await getProducts({ popular_category: fetchSlug, limit: 4 });
+						return { slug: fetchSlug, items: res.data.products || [] };
 					})
 				);
 				const map = {};
@@ -367,11 +380,12 @@ const Home = () => {
 
 			{/* 인기 카테고리별 BEST 섹션 */}
 			{popularSections.map((section) => {
-				const items = popularItems[section.slug] || [];
+				const normalizedSlug = normalizePopularSlug(section.slug);
+				const items = popularItems[normalizedSlug] || [];
 				const bannerUrl = isMobile ? section.mobileBanner : section.banner;
-				const linkUrl = section.link || `/products?category=${section.slug}`;
+				const linkUrl = section.link || `/products?category=${normalizedSlug}`;
 				return (
-					<section className="popular-section" key={section.slug}>
+					<section className="popular-section" key={normalizedSlug}>
 						<Link
 							to={linkUrl}
 							className="popular-hero"
@@ -394,7 +408,7 @@ const Home = () => {
 										</div>
 										<div className="section-more">
 											<Link
-												to={`/products?category=${section.slug}`}
+												to={`/products?category=${normalizedSlug}`}
 												className="btn-load-more">
 												더보기
 											</Link>

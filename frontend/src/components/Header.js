@@ -217,13 +217,21 @@ const Header = () => {
 
     // 슬러그 표준화 (동일 의미 다른 슬러그를 정렬 대상에 맞추기)
     const normalizeSubSlug = (slug) => {
+      const base = (slug || '').toLowerCase().trim();
       const map = {
         'acc': 'accessory',
         'accessories': 'accessory',
+        'accessory': 'accessory',
         'sunglass': 'glasses',
         'sunglasses': 'glasses',
+        'sunglasses&glasses': 'glasses',
+        'sunglasses-glasses': 'glasses',
+        'sunglasses_glasses': 'glasses',
+        'glasses': 'glasses',
+        'shoe': 'shoes',
+        'shoes': 'shoes',
       };
-      return map[slug] || slug;
+      return map[base] || base;
     };
 
     // 중분류 정렬 함수
