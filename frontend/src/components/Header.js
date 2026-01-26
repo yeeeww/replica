@@ -206,6 +206,15 @@ const Header = () => {
       domestic: ['bag-wallet', 'clothing', 'shoes', 'hat', 'accessory', 'watch', 'fashion', 'fashion-acc', 'home', 'home-kitchen', 'belt', 'perfume', 'lighter']
     };
 
+    // 대분류 슬러그 표준화 (실서버에서 men-kor 등 변형 대비)
+    const normalizeParentSlug = (slug) => {
+      if (!slug) return slug;
+      if (slug.startsWith('men')) return 'men';
+      if (slug.startsWith('women')) return 'women';
+      if (slug.startsWith('domestic')) return 'domestic';
+      return slug;
+    };
+
     // 슬러그 표준화 (동일 의미 다른 슬러그를 정렬 대상에 맞추기)
     const normalizeSubSlug = (slug) => {
       const map = {
@@ -219,13 +228,16 @@ const Header = () => {
 
     // 중분류 정렬 함수
     const sortSubCategories = (parentSlug, children) => {
-      const order = subOrderMap[parentSlug];
+      const parentKey = normalizeParentSlug(parentSlug);
+      const order = subOrderMap[parentKey];
       if (!order) return children;
 
       return children.sort((a, b) => {
-        // slug에서 중분류 부분 추출 (예: men-bag -> bag)
-        const aSubSlug = normalizeSubSlug(a.slug.replace(`${parentSlug}-`, ''));
-        const bSubSlug = normalizeSubSlug(b.slug.replace(`${parentSlug}-`, ''));
+        // slug에서 대분류 제거 후 중분류 추출 (예: men-bag -> bag)
+        const aParts = a.slug.split('-');
+        const bParts = b.slug.split('-');
+        const aSubSlug = normalizeSubSlug(aParts.slice(1).join('-'));
+        const bSubSlug = normalizeSubSlug(bParts.slice(1).join('-'));
         
         const aIdx = order.indexOf(aSubSlug);
         const bIdx = order.indexOf(bSubSlug);
