@@ -302,6 +302,14 @@
 	background: #fff;
 }
 
+.home-products-wrap {
+	width: 100%;
+}
+
+.home-products-grid {
+	row-gap: 26px;
+}
+
 .new-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

@@ -533,6 +533,9 @@ router.put('/featured/:type/order', auth, adminAuth, async (req, res) => {
 
 // ========== Weekly Best 상품 관리 (대분류별) ==========
 
+const isMissingWeeklyBestTable = (error) =>
+  error?.code === '42P01' || (error?.message || '').includes('weekly_best_products');
+
 // Weekly Best 상품 목록 조회 (대분류별)
 router.get('/weekly-best/:categorySlug', auth, adminAuth, async (req, res) => {
   const client = await pool.connect();
@@ -552,6 +555,10 @@ router.get('/weekly-best/:categorySlug', auth, adminAuth, async (req, res) => {
 
     res.json({ products: result.rows });
   } catch (error) {
+    if (isMissingWeeklyBestTable(error)) {
+      console.warn('weekly_best_products 테이블이 없어 빈 리스트를 반환합니다. (admin)');
+      return res.json({ products: [] });
+    }
     console.error('Get weekly best products error:', error);
     res.status(500).json({ message: '서버 오류가 발생했습니다.' });
   } finally {
@@ -590,6 +597,10 @@ router.post('/weekly-best/:categorySlug/:productId', auth, adminAuth, async (req
 
     res.json({ message: '상품이 추가되었습니다.', product: productCheck.rows[0] });
   } catch (error) {
+    if (isMissingWeeklyBestTable(error)) {
+      console.warn('weekly_best_products 테이블이 없어 추가 요청을 처리하지 못했습니다.');
+      return res.status(400).json({ message: 'Weekly Best 기능이 비활성화되었습니다. 테이블 생성 후 다시 시도해주세요.' });
+    }
     console.error('Add weekly best product error:', error);
     res.status(500).json({ message: '서버 오류가 발생했습니다.' });
   } finally {
@@ -614,6 +625,10 @@ router.delete('/weekly-best/:categorySlug/:productId', auth, adminAuth, async (r
 
     res.json({ message: '상품이 제거되었습니다.' });
   } catch (error) {
+    if (isMissingWeeklyBestTable(error)) {
+      console.warn('weekly_best_products 테이블이 없어 제거 요청을 처리하지 못했습니다.');
+      return res.status(400).json({ message: 'Weekly Best 기능이 비활성화되었습니다. 테이블 생성 후 다시 시도해주세요.' });
+    }
     console.error('Remove weekly best product error:', error);
     res.status(500).json({ message: '서버 오류가 발생했습니다.' });
   } finally {
@@ -645,6 +660,10 @@ router.put('/weekly-best/:categorySlug/order', auth, adminAuth, async (req, res)
     res.json({ message: '순서가 변경되었습니다.' });
   } catch (error) {
     await client.query('ROLLBACK');
+    if (isMissingWeeklyBestTable(error)) {
+      console.warn('weekly_best_products 테이블이 없어 순서 변경을 처리하지 못했습니다.');
+      return res.status(400).json({ message: 'Weekly Best 기능이 비활성화되었습니다. 테이블 생성 후 다시 시도해주세요.' });
+    }
     console.error('Update weekly best order error:', error);
     res.status(500).json({ message: '서버 오류가 발생했습니다.' });
   } finally {

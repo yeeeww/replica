@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { getCategories, getPublicSettings } from '../services/api';
+import { getCategories, getProducts, getPublicSettings, getImageUrl } from '../services/api';
+import { formatPrice } from '../utils/format';
 import './Header.css';
 
 // 카테고리 영문 slug -> 한글 이름 매핑
@@ -64,10 +65,16 @@ const Header = () => {
   const { itemCount } = useCart();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchPagination, setSearchPagination] = useState(null);
+  const [searchPage, setSearchPage] = useState(1);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openSubmenu, setOpenSubmenu] = useState(null);
   const [allCategories, setAllCategories] = useState([]);
   const [registerPoints, setRegisterPoints] = useState(5000);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   // DB에서 카테고리 불러오기
   useEffect(() => {
@@ -101,12 +108,86 @@ const Header = () => {
     navigate('/');
   };
 
-  const handleSearch = (e) => {
+  const resetSearchState = () => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchPagination(null);
+    setSearchPage(1);
+    setSearchError('');
+    setSearchLoading(false);
+  };
+
+  const fetchSearchResults = useCallback(async (keyword, page = 1) => {
+    const trimmed = keyword.trim();
+    if (!trimmed) {
+      setSearchResults([]);
+      setSearchError('');
+      return;
+    }
+    setSearchLoading(true);
+    setSearchError('');
+    try {
+      const response = await getProducts({ search: trimmed, page, limit: 20 });
+      setSearchResults(response.data.products || []);
+      const pagination = response.data.pagination || { totalPages: 1, currentPage: page };
+      setSearchPagination(pagination);
+      setSearchPage(pagination.currentPage || page);
+    } catch (error) {
+      console.error('검색 실패:', error);
+      setSearchError('검색 결과를 불러오지 못했습니다.');
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, []);
+
+  const handleSearch = async (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/products?search=${searchQuery}`);
+      await fetchSearchResults(searchQuery, 1);
     }
   };
+
+  const toggleSearch = () => {
+    if (searchOpen) {
+      resetSearchState();
+      setSearchOpen(false);
+      return;
+    }
+    setSearchOpen(true);
+    setTimeout(() => {
+      const input = document.querySelector('.search-input-overlay');
+      if (input) input.focus();
+    }, 100);
+  };
+
+  const closeSearch = () => {
+    resetSearchState();
+    setSearchOpen(false);
+  };
+
+  const handleSearchPageChange = (newPage) => {
+    if (!searchQuery.trim()) return;
+    if (searchPagination) {
+      if (newPage < 1 || newPage > (searchPagination.totalPages || 1)) return;
+    }
+    setSearchPage(newPage);
+    fetchSearchResults(searchQuery, newPage);
+  };
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const handler = setTimeout(() => {
+      if (searchQuery.trim()) {
+        setSearchPage(1);
+        fetchSearchResults(searchQuery, 1);
+      } else {
+        setSearchResults([]);
+        setSearchError('');
+      }
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery, searchOpen, fetchSearchResults]);
 
   // DB 카테고리를 메뉴 구조로 변환
   const menuConfig = useMemo(() => {
@@ -119,10 +200,21 @@ const Header = () => {
     // 중분류 순서 정의 (대분류별)
     const subOrderMap = {
       // 남성, 여성: 가방, 지갑, 시계, 신발, 벨트, 악세서리, 모자, 의류, 선글라스&안경, 기타
-      'men': ['bag', 'wallet', 'watch', 'shoes', 'belt', 'accessory', 'hat', 'clothing', 'glasses', 'etc'],
-      'women': ['bag', 'wallet', 'watch', 'shoes', 'belt', 'accessory', 'hat', 'clothing', 'glasses', 'etc'],
+      men: ['bag', 'wallet', 'watch', 'shoes', 'belt', 'accessory', 'hat', 'clothing', 'glasses', 'etc'],
+      women: ['bag', 'wallet', 'watch', 'shoes', 'belt', 'accessory', 'hat', 'clothing', 'glasses', 'etc'],
       // 국내출고상품: 가방&지갑, 의류, 신발, 모자, 악세서리, 시계, 패션잡화, 생활&주방용품, 벨트, 향수, 라이터
-      'domestic': ['bag-wallet', 'clothing', 'shoes', 'hat', 'accessory', 'watch', 'fashion', 'fashion-acc', 'home', 'home-kitchen', 'belt', 'perfume', 'lighter']
+      domestic: ['bag-wallet', 'clothing', 'shoes', 'hat', 'accessory', 'watch', 'fashion', 'fashion-acc', 'home', 'home-kitchen', 'belt', 'perfume', 'lighter']
+    };
+
+    // 슬러그 표준화 (동일 의미 다른 슬러그를 정렬 대상에 맞추기)
+    const normalizeSubSlug = (slug) => {
+      const map = {
+        'acc': 'accessory',
+        'accessories': 'accessory',
+        'sunglass': 'glasses',
+        'sunglasses': 'glasses',
+      };
+      return map[slug] || slug;
     };
 
     // 중분류 정렬 함수
@@ -132,8 +224,8 @@ const Header = () => {
 
       return children.sort((a, b) => {
         // slug에서 중분류 부분 추출 (예: men-bag -> bag)
-        const aSubSlug = a.slug.replace(`${parentSlug}-`, '');
-        const bSubSlug = b.slug.replace(`${parentSlug}-`, '');
+        const aSubSlug = normalizeSubSlug(a.slug.replace(`${parentSlug}-`, ''));
+        const bSubSlug = normalizeSubSlug(b.slug.replace(`${parentSlug}-`, ''));
         
         const aIdx = order.indexOf(aSubSlug);
         const bIdx = order.indexOf(bSubSlug);
@@ -215,7 +307,7 @@ const Header = () => {
             <span className="logo-text">WIZNOBLE</span>
             <span className="logo-text-mirror">ELBONZIW</span>
           </Link>
-          <button className="mobile-search-btn">
+          <button className="mobile-search-btn" onClick={toggleSearch}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8"></circle>
               <path d="m21 21-4.35-4.35"></path>
@@ -254,7 +346,7 @@ const Header = () => {
               {/* 빈 공간 */}
             </div>
             <div className="header-top-right">
-              <button className="icon-btn search-btn">
+              <button className="icon-btn search-btn" onClick={toggleSearch}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <circle cx="11" cy="11" r="8"></circle>
                   <path d="m21 21-4.35-4.35"></path>
@@ -390,23 +482,95 @@ const Header = () => {
         </nav>
       </div>
 
-      {/* 검색 오버레이 (숨김 상태) */}
-      <div className="search-overlay" style={{ display: 'none' }}>
-        <div className="container">
-          <form className="search-form-overlay" onSubmit={handleSearch}>
-            <input
-              type="text"
-              placeholder="상품 검색..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input-overlay"
-            />
-            <button type="submit" className="search-btn-overlay">
-              검색
-            </button>
-          </form>
-        </div>
-      </div>
+      {/* 검색 오버레이 */}
+      {searchOpen && (
+        <>
+          <div className="search-overlay-backdrop" onClick={closeSearch}></div>
+          <div className="search-overlay">
+            <div className="container">
+              <form className="search-form-overlay" onSubmit={handleSearch}>
+                <input
+                  type="text"
+                  placeholder="상품명을 입력하세요"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="search-input-overlay"
+                  autoFocus
+                />
+                <button type="submit" className="search-btn-overlay">
+                  검색
+                </button>
+                <button type="button" className="search-close-btn" onClick={closeSearch}>
+                  ✕
+                </button>
+              </form>
+              <div className="search-results">
+                {!searchQuery.trim() && !searchLoading && (
+                  <div className="search-status">상품명을 입력하면 결과가 표시됩니다.</div>
+                )}
+                {searchLoading && <div className="search-status">검색 중...</div>}
+                {searchError && !searchLoading && (
+                  <div className="search-status error">{searchError}</div>
+                )}
+                {!searchLoading && !searchError && searchQuery.trim() && searchResults.length === 0 && (
+                  <div className="search-status">일치하는 상품이 없습니다.</div>
+                )}
+                {!searchLoading && searchResults.map((product) => (
+                  <Link
+                    key={product.id}
+                    to={`/products/${product.id}`}
+                    className="search-result-item"
+                    onClick={closeSearch}
+                  >
+                    <div className="search-result-thumb">
+                      <img src={getImageUrl(product.image_url)} alt={product.name} />
+                    </div>
+                    <div className="search-result-info">
+                      <div className="search-result-name">{product.name}</div>
+                      {product.category_full_path && (
+                        <div className="search-result-meta">{product.category_full_path}</div>
+                      )}
+                      <div className="search-result-price">{formatPrice(product.price)}</div>
+                    </div>
+                  </Link>
+                ))}
+                {searchPagination?.totalPages > 1 && (
+                  <div className="search-pagination">
+                    <button
+                      type="button"
+                      className="search-pagination-btn"
+                      onClick={() => handleSearchPageChange(searchPage - 1)}
+                      disabled={searchPage === 1}
+                    >
+                      이전
+                    </button>
+                    <div className="search-pagination-numbers">
+                      {Array.from({ length: searchPagination.totalPages }, (_, i) => i + 1).map((num) => (
+                        <button
+                          key={num}
+                          type="button"
+                          className={`search-pagination-number ${num === searchPage ? 'active' : ''}`}
+                          onClick={() => handleSearchPageChange(num)}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className="search-pagination-btn"
+                      onClick={() => handleSearchPageChange(searchPage + 1)}
+                      disabled={searchPage === searchPagination.totalPages}
+                    >
+                      다음
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </header>
   );
 };

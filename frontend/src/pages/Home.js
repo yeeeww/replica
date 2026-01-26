@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getProducts, getBanners, getImageUrl } from "../services/api";
+import ProductCard from "../components/ProductCard";
 import "./Home.css";
 
 const Home = () => {
@@ -10,7 +11,6 @@ const Home = () => {
 	const [hitLoading, setHitLoading] = useState(true);
 	const [currentSlide, setCurrentSlide] = useState(0);
 	const [newVisibleCount, setNewVisibleCount] = useState(4);
-	const [hitSlideIndex, setHitSlideIndex] = useState(0);
 	const [popularLoading, setPopularLoading] = useState(false);
 	const [popularItems, setPopularItems] = useState({});
 	const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -189,30 +189,6 @@ const Home = () => {
 	};
 
 	const visibleNewItems = products.slice(0, newVisibleCount);
-	const hitSlides = [];
-	for (let i = 0; i < hitProducts.length; i += 5) {
-		hitSlides.push(hitProducts.slice(i, i + 5));
-	}
-
-	const nextHitSlide = () => {
-		if (hitSlides.length === 0) return;
-		setHitSlideIndex((prev) => (prev + 1) % hitSlides.length);
-	};
-
-	const prevHitSlide = () => {
-		if (hitSlides.length === 0) return;
-		setHitSlideIndex(
-			(prev) => (prev - 1 + hitSlides.length) % hitSlides.length
-		);
-	};
-
-	useEffect(() => {
-		if (hitSlides.length === 0) return;
-		const timer = setInterval(() => {
-			setHitSlideIndex((prev) => (prev + 1) % hitSlides.length);
-		}, 4000);
-		return () => clearInterval(timer);
-	}, [hitSlides.length]);
 
 	useEffect(() => {
 		const fetchPopular = async () => {
@@ -342,28 +318,12 @@ const Home = () => {
 						<div className="loading">상품을 불러오는 중...</div>
 					) : (
 						<>
-							<div className="new-grid">
-								{visibleNewItems.map((product) => (
-									<div key={product.id} className="new-card">
-										<Link to={`/products/${product.id}`}>
-											<div className="new-card-image">
-												<img
-													src={product.image_url}
-													alt={product.name}
-													onError={(e) => {
-														e.target.style.visibility = "hidden";
-													}}
-												/>
-											</div>
-											<div className="new-card-info">
-												<p className="new-card-name">{product.name}</p>
-												<p className="new-card-price">
-													{product.price?.toLocaleString()}원
-												</p>
-											</div>
-										</Link>
-									</div>
-								))}
+							<div className="home-products-wrap">
+								<div className="grid grid-4 products-grid home-products-grid">
+									{visibleNewItems.map((product) => (
+										<ProductCard key={product.id} product={product} />
+									))}
+								</div>
 							</div>
 							{products.length > newVisibleCount && (
 								<div className="section-more">
@@ -390,50 +350,17 @@ const Home = () => {
 					{hitLoading ? (
 						<div className="loading">상품을 불러오는 중...</div>
 					) : (
-						<div className="celeb-carousel">
-							{hitSlides.length === 0 ? (
+						<>
+							{hitProducts.length === 0 ? (
 								<div className="loading">상품이 없습니다.</div>
 							) : (
-								<div className="hit-slider-wrapper">
-									<button className="hit-nav-btn prev" onClick={prevHitSlide}>
-										‹
-									</button>
-									<div
-										className="celeb-grid"
-										style={{
-											transform: `translateX(-${hitSlideIndex * 100}%)`,
-										}}>
-										{hitSlides.map((group, slideIdx) => (
-											<div key={slideIdx} className="celeb-slide">
-												{group.map((product) => (
-													<div key={product.id} className="celeb-card">
-														<Link to={`/products/${product.id}`}>
-															<div className="celeb-image">
-																<img
-																	src={product.image_url}
-																	alt={product.name}
-																/>
-															</div>
-															<div className="celeb-info">
-																<p className="celeb-product-name">
-																	{product.name}
-																</p>
-																<p className="celeb-price">
-																	{product.price?.toLocaleString()}원
-																</p>
-															</div>
-														</Link>
-													</div>
-												))}
-											</div>
-										))}
-									</div>
-									<button className="hit-nav-btn next" onClick={nextHitSlide}>
-										›
-									</button>
+								<div className="grid grid-4 products-grid home-products-grid">
+									{hitProducts.map((product) => (
+										<ProductCard key={product.id} product={product} />
+									))}
 								</div>
 							)}
-						</div>
+						</>
 					)}
 				</div>
 			</section>
@@ -460,29 +387,9 @@ const Home = () => {
 									<div className="loading">상품을 불러오는 중...</div>
 								) : (
 									<>
-										<div className="popular-grid">
+										<div className="grid grid-4 products-grid home-products-grid">
 											{items.slice(0, 4).map((product) => (
-												<div key={product.id} className="popular-card">
-													<Link to={`/products/${product.id}`}>
-														<div className="popular-card-image">
-															<img
-																src={product.image_url}
-																alt={product.name}
-																onError={(e) => {
-																	e.target.style.visibility = "hidden";
-																}}
-															/>
-														</div>
-														<div className="popular-card-info">
-															<p className="popular-card-name">
-																{product.name}
-															</p>
-															<p className="popular-card-price">
-																{product.price?.toLocaleString()}원
-															</p>
-														</div>
-													</Link>
-												</div>
+												<ProductCard key={product.id} product={product} />
 											))}
 										</div>
 										<div className="section-more">

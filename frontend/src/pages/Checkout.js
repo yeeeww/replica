@@ -38,7 +38,6 @@ const Checkout = () => {
   });
   
   const [sameAsOrderer, setSameAsOrderer] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreePurchase, setAgreePurchase] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -142,7 +141,7 @@ const Checkout = () => {
     e.preventDefault();
     setError('');
 
-    if (!agreeTerms || !agreePrivacy || !agreePurchase) {
+    if (!agreePrivacy || !agreePurchase) {
       setError('모든 약관에 동의해주세요.');
       return;
     }
@@ -571,6 +570,9 @@ const Checkout = () => {
                 <span>무통장입금</span>
               </label>
               <div className="checkout-form-group">
+                <label className="checkout-required-label">
+                  입금자명 <span className="required-mark">필수</span>
+                </label>
                 <input
                   type="text"
                   name="depositor_name"
@@ -606,10 +608,9 @@ const Checkout = () => {
               <label className="checkout-checkbox-label checkout-checkbox-all">
                 <input
                   type="checkbox"
-                  checked={agreeTerms && agreePrivacy && agreePurchase}
+                  checked={agreePrivacy && agreePurchase}
                   onChange={(e) => {
                     const checked = e.target.checked;
-                    setAgreeTerms(checked);
                     setAgreePrivacy(checked);
                     setAgreePurchase(checked);
                   }}

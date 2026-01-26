@@ -59,6 +59,14 @@
   font-weight: 700;
 }
 
+.checkout-required-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #111;
+  margin-bottom: 6px;
+}
+
 .checkout-products {
   display: flex;
   flex-direction: column;

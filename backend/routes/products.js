@@ -28,7 +28,13 @@ router.get('/weekly-best/:categorySlug', async (req, res) => {
 
     res.json({ products: result.rows });
   } catch (error) {
-    console.error('Get weekly best products error:', error);
+    // 테이블이 없거나 구성되지 않은 경우에도 프론트가 깨지지 않도록 빈 배열 반환
+    const isMissingTable = error?.code === '42P01' || (error?.message || '').includes('weekly_best_products');
+    if (isMissingTable) {
+      console.warn('weekly_best_products 테이블이 없어 빈 리스트를 반환합니다.');
+      return res.json({ products: [] });
+    }
+    console.error('Get weekly best products error:', error?.message || error);
     res.status(500).json({ message: '서버 오류가 발생했습니다.' });
   } finally {
     client.release();

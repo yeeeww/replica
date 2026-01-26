@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getNotices, deleteNotice } from '../../services/api';
-import { formatDate } from '../../utils/format';
+import { formatDateShort } from '../../utils/format';
 
 const AdminNotices = () => {
   const [notices, setNotices] = useState([]);
@@ -70,7 +70,7 @@ const AdminNotices = () => {
                 </Link>
               </td>
               <td>{notice.is_pinned ? '📌 고정' : '-'}</td>
-              <td>{formatDate(notice.created_at)}</td>
+              <td>{formatDateShort(notice.created_at)}</td>
               <td>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <Link 

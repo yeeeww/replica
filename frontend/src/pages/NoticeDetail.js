@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getNotice } from '../services/api';
-import { formatDate } from '../utils/format';
+import { formatDateShort } from '../utils/format';
 import './NoticeDetail.css';
 
 const NoticeDetail = () => {
@@ -68,7 +68,7 @@ const NoticeDetail = () => {
           <h1>{notice.title}</h1>
           <div className="notice-detail-meta">
             <span>작성자: {notice.author_name || '관리자'}</span>
-            <span>작성일: {formatDate(notice.created_at)}</span>
+            <span>작성일: {formatDateShort(notice.created_at)}</span>
           </div>
         </div>
 
