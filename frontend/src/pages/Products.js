@@ -209,7 +209,6 @@ const Products = () => {
 
 	const sortOptions = [
 		{ value: "recent", label: "등록순" },
-		{ value: "popular", label: "인기순" },
 		{ value: "price-asc", label: "낮은가격순" },
 		{ value: "price-desc", label: "높은가격순" },
 		{ value: "review", label: "상품평 많은순" },
@@ -294,8 +293,6 @@ const Products = () => {
 				return arr.sort((a, b) => (a.price || 0) - (b.price || 0));
 			case "price-desc":
 				return arr.sort((a, b) => (b.price || 0) - (a.price || 0));
-			case "popular":
-				return arr.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
 			case "review":
 				return arr.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
 			case "name-asc":
