@@ -132,23 +132,29 @@ def upload_image_to_s3(image_url: str, prefix: str = "crawled") -> Optional[str]
 
 def upload_images_batch_to_s3(image_urls: List[str], prefix: str = "crawled") -> List[str]:
     """
-    여러 이미지를 병렬로 S3에 업로드
-    Returns: S3 URL 리스트
+    여러 이미지를 병렬로 S3에 업로드 (순서 보장)
+    Returns: S3 URL 리스트 (원래 순서 유지)
     """
     if not s3_client or not image_urls:
         return image_urls
     
-    s3_urls = []
+    # 순서 보장을 위해 인덱스와 함께 처리
+    s3_urls = [None] * len(image_urls)
+    
     with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = {executor.submit(upload_image_to_s3, url, prefix): url for url in image_urls}
+        # (index, url) 튜플로 제출하여 순서 추적
+        futures = {
+            executor.submit(upload_image_to_s3, url, prefix): (idx, url) 
+            for idx, url in enumerate(image_urls)
+        }
         for future in as_completed(futures):
+            idx, original_url = futures[future]
             try:
                 s3_url = future.result()
-                s3_urls.append(s3_url)
+                s3_urls[idx] = s3_url  # 원래 위치에 저장
             except Exception as e:
-                original_url = futures[future]
                 print(f"[S3 ERROR] 배치 업로드 실패: {e}")
-                s3_urls.append(original_url)
+                s3_urls[idx] = original_url  # 실패 시 원본 URL 유지
     
     return s3_urls
 
@@ -437,38 +443,73 @@ def parse_product_detail(url: str, upload_to_s3: bool = True) -> Optional[Dict[s
 
         # 5. 상세 설명 내 이미지들 추출 (여러 개를 ';'로 구분)
         desc_img_urls: List[str] = []
+        seen = set()
+        
+        # 대표 이미지가 있으면 맨 앞에 추가 (첫 번째 이미지 누락 방지)
+        if img_url:
+            seen.add(img_url)
+            desc_img_urls.append(img_url)
+            print(f"  [IMG] 대표이미지 추가: {img_url[:60]}...")
+        
+        # 메인 설명 영역 (#sit_inf_explan) 내 이미지 우선 수집
         desc_selectors = [
-            "#sit_inf img",
+            "#sit_inf_explan img",  # 상세설명 영역 (우선)
+            "#sit_inf img",         # 상품정보 전체 영역
             ".sit_inf img", 
-            "#sit_inf_explan img",
             "#sit_desc img",
             ".sit_desc img",
             ".item_explan img",
             ".product-detail img",
-            ".view_content img",         # 추가
-            "#goods_spec img",           # 추가
-            ".goods_description img",    # 추가
-            ".detail_cont img",          # 추가
-            "[class*='detail'] img",     # 추가: detail 포함하는 클래스
-            "[class*='desc'] img",       # 추가: desc 포함하는 클래스
-            "[id*='detail'] img",        # 추가: detail 포함하는 ID
+            ".view_content img",
+            "#goods_spec img",
+            ".goods_description img",
+            ".detail_cont img",
+            "[class*='detail'] img",
+            "[class*='desc'] img",
+            "[id*='detail'] img",
+            ".product-content img",
+            ".goods-view img",
+            ".item-detail img",
+            "#prdDetail img",
+            ".detailArea img",
         ]
-        seen = set()
+        
         for selector in desc_selectors:
             try:
-                for tag in soup.select(selector):
-                    src = tag.get("src") or tag.get("data-src") or ""  # lazy load 대응
+                tags = soup.select(selector)
+                for tag in tags:
+                    # 이미지 소스 추출 (다양한 속성 확인)
+                    src = tag.get("src") or tag.get("data-src") or tag.get("data-original") or tag.get("data-lazy") or ""
                     if not src:
                         continue
+                    
+                    # 상대 경로 절대 경로로 변환
                     abs_src = urljoin("https://replmoa1.com", src)
-                    # 유효한 이미지 확장자만
+                    
+                    # 유효한 이미지 URL인지 확인
                     if not any(ext in abs_src.lower() for ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']):
                         continue
+                    
+                    # 너무 작은 이미지 제외 (아이콘, 버튼 등)
+                    width = tag.get("width", "")
+                    height = tag.get("height", "")
+                    try:
+                        if width and int(width) < 50:
+                            continue
+                        if height and int(height) < 50:
+                            continue
+                    except:
+                        pass
+                    
+                    # 중복 제외
                     if abs_src not in seen:
                         seen.add(abs_src)
                         desc_img_urls.append(abs_src)
-            except Exception:
+            except Exception as e:
                 continue  # 셀렉터 오류 무시
+        
+        # 디버그: 수집된 이미지 개수 출력
+        print(f"  [IMG] 총 {len(desc_img_urls)}개 이미지 수집됨")
 
         # 6. 옵션(사이즈, 컬러 등) 추출
         options = parse_product_options(soup)
