@@ -193,8 +193,10 @@ const ProductDetail = () => {
       .split(";")
       .map((s) => s.trim())
       .filter((s) => s && s.startsWith("http"));
-    // 첫 번째 이미지 제외 (대표 이미지와 동일할 수 있음)
-    return imgs.slice(1);
+    // 첫 번째 이미지(대표) 제외 후, 마지막 설명 이미지는 숨김
+    const contentImages = imgs.slice(1);
+    if (contentImages.length <= 1) return [];
+    return contentImages.slice(0, -1);
   }, [product]);
 
   if (loading) {
