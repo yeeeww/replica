@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { getProducts, deleteProduct } from '../../services/api';
 import { formatPrice } from '../../utils/format';
@@ -10,19 +10,16 @@ const AdminProducts = () => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({});
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');  // 입력용
+  const [searchQuery, setSearchQuery] = useState('');  // 실제 검색용
 
-  useEffect(() => {
-    fetchProducts();
-  }, [page]);
-
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async (search = '') => {
     try {
       setLoading(true);
       const response = await getProducts({ 
         limit: ITEMS_PER_PAGE, 
         page,
-        search: searchQuery || undefined
+        search: search || undefined
       });
       setProducts(response.data.products);
       setPagination(response.data.pagination || {});
@@ -31,12 +28,16 @@ const AdminProducts = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page]);
+
+  useEffect(() => {
+    fetchProducts(searchQuery);
+  }, [fetchProducts, searchQuery]);
 
   const handleSearch = (e) => {
     e.preventDefault();
     setPage(1);
-    fetchProducts();
+    setSearchQuery(searchInput);
   };
 
   const handlePageChange = (newPage) => {
@@ -134,8 +135,8 @@ const AdminProducts = () => {
         <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px' }}>
           <input
             type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             placeholder="상품명 검색..."
             style={{ 
               padding: '8px 12px', 
@@ -153,9 +154,9 @@ const AdminProducts = () => {
               className="btn btn-secondary" 
               style={{ padding: '8px 16px' }}
               onClick={() => {
+                setSearchInput('');
                 setSearchQuery('');
                 setPage(1);
-                setTimeout(fetchProducts, 0);
               }}
             >
               초기화
