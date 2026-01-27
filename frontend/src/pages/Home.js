@@ -383,7 +383,7 @@ const Home = () => {
 				const normalizedSlug = normalizePopularSlug(section.slug);
 				const items = popularItems[normalizedSlug] || [];
 				const bannerUrl = isMobile ? section.mobileBanner : section.banner;
-				const linkUrl = section.link || `/products?category=${normalizedSlug}`;
+				const linkUrl = section.link || `/products?category=popular&subcategory=${normalizedSlug}`;
 				return (
 					<section className="popular-section" key={normalizedSlug}>
 						<Link
@@ -408,7 +408,7 @@ const Home = () => {
 										</div>
 										<div className="section-more">
 											<Link
-												to={`/products?category=${normalizedSlug}`}
+												to={`/products?category=popular&subcategory=${normalizedSlug}`}
 												className="btn-load-more">
 												더보기
 											</Link>
