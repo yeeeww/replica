@@ -19,6 +19,7 @@ const Products = () => {
 	const category = searchParams.get("category") || "";
 	const search = searchParams.get("search") || "";
 	const page = parseInt(searchParams.get("page") || "1");
+	const subcategory = searchParams.get("subcategory") || "";  // 특별 카테고리 내 서브카테고리
 
 	// 대분류 추출 (men, women, domestic 등)
 	const deriveMain = useMemo(() => {
@@ -158,8 +159,22 @@ const Products = () => {
 		'domestic': ['bag-wallet', 'clothing', 'shoes', 'hat', 'accessory', 'watch', 'fashion-acc', 'home-kitchen', 'belt', 'perfume', 'lighter']
 	};
 
+	// 특별 카테고리(인기상품, 추천상품, 히트상품)용 기본 중분류 목록
+	const specialCategoryItems = ['bag', 'wallet', 'watch', 'shoes', 'belt', 'accessory', 'hat', 'clothing', 'glasses', 'etc'];
+	const isSpecialCategory = ['popular', 'recommend', 'hot'].includes(deriveMain);
+
 	// 현재 대분류의 중분류 목록 (카테고리 아이콘용)
 	const depth2Categories = useMemo(() => {
+		// 특별 카테고리인 경우 기본 중분류 목록 표시
+		if (isSpecialCategory) {
+			return specialCategoryItems.map(subType => ({
+				slug: subType,
+				subType,
+				image: categoryIconImages[subType] || categoryIconImages["etc"],
+				label: categoryKoreanNames[subType] || subType
+			}));
+		}
+
 		if (!currentMainCategory || !currentMainCategory.children) return [];
 		
 		const categories = currentMainCategory.children.map(cat => {
@@ -190,7 +205,7 @@ const Products = () => {
 
 		return categories;
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [currentMainCategory, deriveMain]);
+	}, [currentMainCategory, deriveMain, isSpecialCategory]);
 
 	const sortOptions = [
 		{ value: "recent", label: "등록순" },
@@ -231,12 +246,17 @@ const Products = () => {
 	useEffect(() => {
 		fetchProducts();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [category, search, page]);
+	}, [category, search, page, subcategory]);
 
 	const fetchProducts = async () => {
 		try {
 			setLoading(true);
-			const response = await getProducts({ category, search, page, limit: 20 });
+			const params = { category, search, page, limit: 20 };
+			// 특별 카테고리 내 서브카테고리 필터링
+			if (subcategory && isSpecialCategory) {
+				params.subcategory = subcategory;
+			}
+			const response = await getProducts(params);
 			const list = response.data.products || [];
 			setProducts(list);
 			setPagination(response.data.pagination);
@@ -299,6 +319,15 @@ const Products = () => {
 		setSearchParams(params);
 	};
 
+	// 특별 카테고리 내 서브카테고리 변경
+	const handleSubcategoryChange = (newSubcategory) => {
+		const params = new URLSearchParams();
+		params.set("category", category);  // 현재 특별 카테고리 유지 (popular, recommend, hot)
+		if (newSubcategory) params.set("subcategory", newSubcategory);
+		if (search) params.set("search", search);
+		setSearchParams(params);
+	};
+
 	const handlePageChange = (newPage) => {
 		const params = new URLSearchParams(searchParams);
 		params.set("page", newPage.toString());
@@ -345,20 +374,48 @@ const Products = () => {
 			{depth2Categories.length > 0 && (
 				<div className="products-cat-section">
 					<div className="products-cat-grid">
-						{depth2Categories.map((cat) => (
+						{/* 특별 카테고리일 때 "전체" 버튼 추가 */}
+						{isSpecialCategory && (
 							<button
-								key={cat.slug}
-								className={`products-cat-item ${selectedDepth2 === cat.slug || category === cat.slug ? "active" : ""}`}
+								key="all"
+								className={`products-cat-item ${!subcategory ? "active" : ""}`}
 								onClick={() => {
-									setSelectedDepth2(cat.slug);
-									handleCategoryChange(cat.slug);
+									setSelectedDepth2(null);
+									handleSubcategoryChange(null);
 								}}>
 								<div className="products-cat-img">
-									<img src={cat.image} alt={cat.label} />
+									<img src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=200&h=200&fit=crop" alt="전체" />
 								</div>
-								<span>{cat.label}</span>
+								<span>전체</span>
 							</button>
-						))}
+						)}
+						{depth2Categories.map((cat) => {
+							// 특별 카테고리에서는 subcategory로 필터링
+							const isActive = isSpecialCategory 
+								? subcategory === cat.subType 
+								: (selectedDepth2 === cat.slug || category === cat.slug);
+							return (
+								<button
+									key={cat.slug}
+									className={`products-cat-item ${isActive ? "active" : ""}`}
+									onClick={() => {
+										if (isSpecialCategory) {
+											// 특별 카테고리: subcategory 설정
+											setSelectedDepth2(cat.subType);
+											handleSubcategoryChange(cat.subType);
+										} else {
+											// 일반 카테고리: category 변경
+											setSelectedDepth2(cat.slug);
+											handleCategoryChange(cat.slug);
+										}
+									}}>
+									<div className="products-cat-img">
+										<img src={cat.image} alt={cat.label} />
+									</div>
+									<span>{cat.label}</span>
+								</button>
+							);
+						})}
 					</div>
 				</div>
 			)}

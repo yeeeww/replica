@@ -307,7 +307,7 @@ const Home = () => {
 						{categoryCards.map((card) => (
 							<Link
 								key={card.slug}
-								to={`/products?category=${card.slug}`}
+								to={card.slug === 'notice' ? '/notices' : `/products?category=${card.slug}`}
 								className="category-icon-card">
 								<div
 									className="category-icon-img-home"

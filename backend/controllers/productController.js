@@ -31,7 +31,7 @@ exports.getProducts = async (req, res) => {
   const client = await pool.connect();
   
   try {
-    const { category, search, page = 1, limit = 12, popular_category } = req.query;
+    const { category, search, page = 1, limit = 12, popular_category, subcategory } = req.query;
     const offset = (page - 1) * limit;
 
     let query = `
@@ -61,10 +61,31 @@ exports.getProducts = async (req, res) => {
     // 추천/히트/인기 상품 필터링
     else if (featuredType === "recommend") {
       query += ` AND p.is_recommended = true`;
+      // subcategory 필터 추가
+      if (subcategory) {
+        paramCount++;
+        query += ` AND (c.slug LIKE $${paramCount} OR c.slug LIKE $${paramCount + 1})`;
+        params.push(`%-${subcategory}`, `%-${subcategory}-%`);
+        paramCount++;
+      }
     } else if (featuredType === "hot") {
       query += ` AND p.is_hot = true`;
+      // subcategory 필터 추가
+      if (subcategory) {
+        paramCount++;
+        query += ` AND (c.slug LIKE $${paramCount} OR c.slug LIKE $${paramCount + 1})`;
+        params.push(`%-${subcategory}`, `%-${subcategory}-%`);
+        paramCount++;
+      }
     } else if (featuredType === "popular") {
       query += ` AND p.is_popular = true`;
+      // subcategory 필터 추가
+      if (subcategory) {
+        paramCount++;
+        query += ` AND (c.slug LIKE $${paramCount} OR c.slug LIKE $${paramCount + 1})`;
+        params.push(`%-${subcategory}`, `%-${subcategory}-%`);
+        paramCount++;
+      }
     } else if (category) {
       paramCount++;
       // 카테고리 일치 또는 하위카테고리(접두어)까지 포함
