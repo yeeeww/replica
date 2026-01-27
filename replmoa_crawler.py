@@ -5,6 +5,8 @@ import random
 import time
 import io
 import hashlib
+import signal
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Optional
 from urllib.parse import urljoin, urlparse
@@ -13,6 +15,32 @@ import requests
 from bs4 import BeautifulSoup
 import psycopg2
 from psycopg2.extras import RealDictCursor
+
+# 중지 플래그 확인
+STOP_FLAG_PATH = os.environ.get("CRAWL_STOP_FLAG", "")
+STOP_REQUESTED = False
+
+def check_stop_flag():
+    """중지 요청 확인"""
+    global STOP_REQUESTED
+    if STOP_REQUESTED:
+        return True
+    if STOP_FLAG_PATH and os.path.exists(STOP_FLAG_PATH):
+        STOP_REQUESTED = True
+        print("\n[STOP] 중지 요청 감지됨! 크롤링을 종료합니다...")
+        return True
+    return False
+
+def signal_handler(signum, frame):
+    """시그널 핸들러 (SIGTERM, SIGINT)"""
+    global STOP_REQUESTED
+    STOP_REQUESTED = True
+    print(f"\n[STOP] 시그널 {signum} 수신됨. 크롤링을 종료합니다...")
+    sys.exit(0)
+
+# 시그널 핸들러 등록
+signal.signal(signal.SIGTERM, signal_handler)
+signal.signal(signal.SIGINT, signal_handler)
 
 # AWS S3 설정
 try:
@@ -408,32 +436,39 @@ def parse_product_detail(url: str, upload_to_s3: bool = True) -> Optional[Dict[s
                 img_url = "https://replmoa1.com" + img_url  # 상대경로 처리
 
         # 5. 상세 설명 내 이미지들 추출 (여러 개를 ';'로 구분)
-        #    특정 이미지(불필요한 마지막 이미지) 제거 대상 목록을 미리 정의
-        exclude_images = {
-            "https://replmoa1.com/data/editor/2409/f43f6efd43e8ac62b2810d06535ee845_1727412960_5405.jpg"
-        }
         desc_img_urls: List[str] = []
         desc_selectors = [
             "#sit_inf img",
-            ".sit_inf img",
+            ".sit_inf img", 
             "#sit_inf_explan img",
             "#sit_desc img",
             ".sit_desc img",
             ".item_explan img",
             ".product-detail img",
+            ".view_content img",         # 추가
+            "#goods_spec img",           # 추가
+            ".goods_description img",    # 추가
+            ".detail_cont img",          # 추가
+            "[class*='detail'] img",     # 추가: detail 포함하는 클래스
+            "[class*='desc'] img",       # 추가: desc 포함하는 클래스
+            "[id*='detail'] img",        # 추가: detail 포함하는 ID
         ]
         seen = set()
         for selector in desc_selectors:
-            for tag in soup.select(selector):
-                src = tag.get("src") or ""
-                if not src:
-                    continue
-                abs_src = urljoin("https://replmoa1.com", src)
-                if abs_src in exclude_images:
-                    continue
-                if abs_src not in seen:
-                    seen.add(abs_src)
-                    desc_img_urls.append(abs_src)
+            try:
+                for tag in soup.select(selector):
+                    src = tag.get("src") or tag.get("data-src") or ""  # lazy load 대응
+                    if not src:
+                        continue
+                    abs_src = urljoin("https://replmoa1.com", src)
+                    # 유효한 이미지 확장자만
+                    if not any(ext in abs_src.lower() for ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']):
+                        continue
+                    if abs_src not in seen:
+                        seen.add(abs_src)
+                        desc_img_urls.append(abs_src)
+            except Exception:
+                continue  # 셀렉터 오류 무시
 
         # 6. 옵션(사이즈, 컬러 등) 추출
         options = parse_product_options(soup)
@@ -691,6 +726,10 @@ def main() -> None:
         url_batches = [urls[i:i+batch_size] for i in range(0, len(urls), batch_size)]
         
         for batch_idx, batch in enumerate(url_batches):
+            # 중지 요청 확인
+            if check_stop_flag():
+                print(f"[STOP] 중지됨 - {count}개 저장 완료")
+                break
             if count >= MAX_SAVE:
                 break
                 
@@ -701,6 +740,11 @@ def main() -> None:
                 }
                 
                 for future in as_completed(futures):
+                    # 중지 요청 확인
+                    if check_stop_flag():
+                        executor.shutdown(wait=False, cancel_futures=True)
+                        break
+                    
                     info, idx, url, error = future.result()
                     scanned += 1
                     
@@ -726,6 +770,10 @@ def main() -> None:
         # 필터 없으면 순차 처리 - 4만개 대용량 크롤링에 최적화
         try:
             for idx, url in enumerate(urls, start=1):
+                # 중지 요청 확인 (100개마다)
+                if idx % 100 == 0 and check_stop_flag():
+                    print(f"[STOP] 중지됨 - {count}개 저장 완료")
+                    break
                 if count >= MAX_SAVE:
                     print(f"[STOP] 최대 {MAX_SAVE}개까지만 저장 후 중단합니다.")
                     break

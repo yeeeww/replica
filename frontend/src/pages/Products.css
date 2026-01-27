@@ -390,6 +390,14 @@
 	border-color: #000;
 }
 
+.pagination-dots {
+	padding: 0 8px;
+	color: #999;
+	font-size: 14px;
+	display: flex;
+	align-items: center;
+}
+
 @media (max-width: 1024px) {
 	.weekly-slide {
 		grid-template-columns: repeat(2, 1fr);

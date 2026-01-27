@@ -250,17 +250,23 @@ router.post('/crawl/start', auth, adminAuth, async (req, res) => {
   // Python 경로 탐색 (Windows / Linux 호환)
   const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
   
+  // 중지 플래그 파일 삭제 (이전 실행에서 남은 것)
+  const stopFlagPath = path.join(__dirname, '..', 'crawl_stop.flag');
+  try { require('fs').unlinkSync(stopFlagPath); } catch(e) {}
+  
   // -u 옵션: unbuffered stdout/stderr (실시간 출력)
   crawlerProcess = spawn(pythonCmd, ['-u', crawlerPath], {
     env: {
       ...process.env,
       CRAWL_LIMIT: crawlLimit.toString(),
       CRAWL_CATEGORY: categoryFilter,
+      CRAWL_STOP_FLAG: stopFlagPath,  // 중지 플래그 경로 전달
       PYTHONIOENCODING: 'utf-8',
       PYTHONUNBUFFERED: '1'
     },
     cwd: path.join(__dirname, '../..'),
-    shell: true
+    shell: true,
+    detached: process.platform !== 'win32'  // Linux에서 프로세스 그룹으로 실행
   });
 
   crawlerProcess.stdout.on('data', (data) => {
@@ -322,16 +328,40 @@ router.post('/crawl/stop', auth, adminAuth, (req, res) => {
   }
 
   try {
-    // Windows와 Unix 모두에서 프로세스 종료
+    const pid = crawlerProcess.pid;
+    
+    // 1. 중지 플래그 파일 생성 (크롤러가 확인)
+    const fs = require('fs');
+    const path = require('path');
+    const stopFlagPath = path.join(__dirname, '..', 'crawl_stop.flag');
+    fs.writeFileSync(stopFlagPath, Date.now().toString());
+    
+    // 2. 프로세스 강제 종료 (자식 프로세스 포함)
     if (process.platform === 'win32') {
-      spawn('taskkill', ['/pid', crawlerProcess.pid, '/f', '/t'], { shell: true });
+      spawn('taskkill', ['/pid', pid, '/f', '/t'], { shell: true });
     } else {
-      crawlerProcess.kill('SIGTERM');
+      // Linux: 프로세스 그룹 전체 종료 (SIGKILL)
+      try {
+        process.kill(-pid, 'SIGKILL');  // 프로세스 그룹 전체
+      } catch (e) {
+        // 그룹 종료 실패시 개별 종료
+        spawn('pkill', ['-KILL', '-P', pid.toString()], { shell: true });  // 자식 프로세스
+        crawlerProcess.kill('SIGKILL');  // 메인 프로세스
+      }
     }
     
-    crawlStatus.logs.push(`[${new Date().toLocaleTimeString()}] 크롤링 중지 요청됨...`);
+    // 3. 상태 업데이트
+    setTimeout(() => {
+      crawlStatus.isRunning = false;
+      crawlStatus.endTime = new Date().toISOString();
+      crawlerProcess = null;
+      // 중지 플래그 파일 삭제
+      try { fs.unlinkSync(stopFlagPath); } catch(e) {}
+    }, 1000);
     
-    res.json({ message: '크롤링 중지 요청이 전송되었습니다.' });
+    crawlStatus.logs.push(`[${new Date().toLocaleTimeString()}] 크롤링 강제 중지됨 (PID: ${pid})`);
+    
+    res.json({ message: '크롤링이 강제 중지되었습니다.' });
   } catch (error) {
     console.error('Stop crawl error:', error);
     res.status(500).json({ message: '크롤링 중지에 실패했습니다.' });

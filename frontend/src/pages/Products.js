@@ -501,18 +501,54 @@ const Products = () => {
 										</button>
 
 										<div className="pagination-numbers">
-											{Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(
-												(num) => (
-													<button
-														key={num}
-														className={`pagination-number ${
-															num === page ? "active" : ""
-														}`}
-														onClick={() => handlePageChange(num)}>
-														{num}
-													</button>
-												)
-											)}
+											{(() => {
+												const totalPages = pagination.totalPages;
+												const current = page;
+												const delta = 2; // 현재 페이지 앞뒤로 보여줄 개수
+												const pages = [];
+												
+												// 표시할 페이지 번호 계산
+												let start = Math.max(2, current - delta);
+												let end = Math.min(totalPages - 1, current + delta);
+												
+												// 첫 페이지
+												pages.push(1);
+												
+												// 첫 페이지와 start 사이에 간격이 있으면 ...
+												if (start > 2) {
+													pages.push('...');
+												}
+												
+												// 중간 페이지들
+												for (let i = start; i <= end; i++) {
+													if (i !== 1 && i !== totalPages) {
+														pages.push(i);
+													}
+												}
+												
+												// end와 마지막 페이지 사이에 간격이 있으면 ...
+												if (end < totalPages - 1) {
+													pages.push('...');
+												}
+												
+												// 마지막 페이지 (1페이지가 아닌 경우)
+												if (totalPages > 1) {
+													pages.push(totalPages);
+												}
+												
+												return pages.map((num, idx) => 
+													num === '...' ? (
+														<span key={`dots-${idx}`} className="pagination-dots">...</span>
+													) : (
+														<button
+															key={num}
+															className={`pagination-number ${num === current ? "active" : ""}`}
+															onClick={() => handlePageChange(num)}>
+															{num}
+														</button>
+													)
+												);
+											})()}
 										</div>
 
 										<button
