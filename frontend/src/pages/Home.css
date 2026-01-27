@@ -1013,6 +1013,11 @@
 		font-size: 14px;
 	}
 
+	/* 홈 상품 카드 좌우 여백 */
+	.home-products-grid {
+		padding: 0 12px;
+	}
+
 	/* HIT PRODUCTS 모바일 */
 	.celeb-picks {
 		padding: 40px 0;

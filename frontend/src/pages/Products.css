@@ -490,6 +490,7 @@
 	.products-grid {
 		grid-template-columns: repeat(2, 1fr) !important;
 		gap: 12px !important;
+		padding: 0 12px;
 	}
 
 	.pagination {
