@@ -144,6 +144,10 @@ DB_CONFIG = {
 }
 MAX_SAVE = int(os.environ.get("CRAWL_LIMIT", "50"))
 CATEGORY_FILTER = os.environ.get("CRAWL_CATEGORY", "")  # 예: "남성", "여성", "남성 > 지갑" 등
+MAX_DB_PRICE = 9999999999999.99  # numeric(15,2) 확장 후 상한 (약 10조원)
+
+# 메모리 관리를 위한 gc import
+import gc
 
 
 def slugify(txt: str) -> str:
@@ -482,7 +486,8 @@ def main() -> None:
         return
 
     conn = psycopg2.connect(**DB_CONFIG)
-    conn.autocommit = False
+    # 크롤링 중간 종료/에러 시 이미 저장된 건을 유지하기 위해 자동 커밋 활성화
+    conn.autocommit = True
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
     def slugify(text: str) -> str:
@@ -628,63 +633,31 @@ def main() -> None:
 
     count = 0
     scanned = 0
-    matched_products = []
     
-    # 필터가 있으면 병렬로 빠르게 스캔
-    if CATEGORY_FILTER:
-        print(f"[SCAN] 카테고리 '{CATEGORY_FILTER}' 상품을 병렬 스캔 중...")
+    # DB 저장 함수 (메모리 절약을 위해 즉시 저장)
+    def save_product_to_db(info):
+        nonlocal count
         
-        # 필요한 만큼만 찾을 때까지 배치로 처리
-        batch_size = 50  # 한 번에 50개씩 병렬 처리
-        url_batches = [urls[i:i+batch_size] for i in range(0, len(urls), batch_size)]
-        
-        for batch_idx, batch in enumerate(url_batches):
-            if len(matched_products) >= MAX_SAVE:
-                break
-                
-            with ThreadPoolExecutor(max_workers=10) as executor:
-                futures = {
-                    executor.submit(fetch_and_filter, (scanned + i + 1, url)): url 
-                    for i, url in enumerate(batch)
-                }
-                
-                for future in as_completed(futures):
-                    info, idx, url, error = future.result()
-                    scanned += 1
-                    
-                    if info:
-                        print(f"[{idx}/{len(urls)}] [MATCH] {info.get('카테고리', '')} - {info.get('상품명', '')[:30]}")
-                        matched_products.append(info)
-                        if len(matched_products) >= MAX_SAVE:
-                            break
-                    else:
-                        # 스캔 진행률 (100개마다 표시)
-                        if scanned % 100 == 0:
-                            print(f"[SCAN] {scanned}개 스캔, {len(matched_products)}개 매칭됨...")
-            
-            # 배치 간 짧은 대기
-            time.sleep(0.5)
-        
-        print(f"[SCAN] 완료: {scanned}개 스캔, {len(matched_products)}개 매칭")
-        
-        # 매칭된 상품들 DB에 저장
-        for info in matched_products:
-            if count >= MAX_SAVE:
-                break
-                
-            product_category = info.get("카테고리") or "기타"
-            category_id = ensure_category_3depth(product_category)
-            cat_info = normalize_category(product_category)
+        product_category = info.get("카테고리") or "기타"
+        category_id = ensure_category_3depth(product_category)
 
-            if already_exists(info["상품명"], category_id):
-                print(f"  [SKIP] 이미 존재: {info['상품명']}")
-                continue
+        if already_exists(info["상품명"], category_id):
+            print(f"  [SKIP] 이미 존재: {info['상품명']}")
+            return False
 
-            price_val = to_price(info.get("판매가격") or "")
-            department_price = to_price(info.get("시중가격") or "")
-            description = f"{info.get('URL','')}\n{info.get('설명이미지들','')}".strip()
-            image_url = info.get("대표이미지") or ""
+        price_val = to_price(info.get("판매가격") or "")
+        department_price = to_price(info.get("시중가격") or "")
+        # DB 제한에 맞춰 상한 적용
+        if price_val and price_val > MAX_DB_PRICE:
+            print(f"[WARN] 가격 상한 적용: {price_val} -> {MAX_DB_PRICE} ({info.get('상품명')})")
+            price_val = MAX_DB_PRICE
+        if department_price and department_price > MAX_DB_PRICE:
+            print(f"[WARN] 백화점가 상한 적용: {department_price} -> {MAX_DB_PRICE} ({info.get('상품명')})")
+            department_price = MAX_DB_PRICE
+        description = f"{info.get('URL','')}\n{info.get('설명이미지들','')}".strip()
+        image_url = info.get("대표이미지") or ""
 
+        try:
             cur.execute(
                 """
                 INSERT INTO products (name, description, price, department_price, category_id, image_url, stock, is_active)
@@ -696,17 +669,61 @@ def main() -> None:
                  category_id, image_url, 10),
             )
             product_id = cur.fetchone()["id"]
+        except Exception as exc:
+            print(f"[ERROR] DB 저장 중 오류(건너뜀): {exc} / {info['상품명']}")
+            return False
+        
+        options = info.get("옵션", [])
+        option_count = save_product_options(product_id, options) if options else 0
+        
+        count += 1
+        sale = info.get("판매가격") or "가격 없음"
+        opt_info = f", 옵션 {option_count}개" if option_count else ""
+        print(f"  [OK] 저장 ({count}/{MAX_SAVE}): {info['상품명']} ({sale}{opt_info})")
+        return True
+    
+    # 필터가 있으면 병렬로 빠르게 스캔 + 즉시 저장 (메모리 절약)
+    if CATEGORY_FILTER:
+        print(f"[SCAN] 카테고리 '{CATEGORY_FILTER}' 상품을 병렬 스캔 중...")
+        
+        # 배치 크기 조절 (메모리 관리)
+        batch_size = 30  # 한 번에 30개씩 병렬 처리
+        url_batches = [urls[i:i+batch_size] for i in range(0, len(urls), batch_size)]
+        
+        for batch_idx, batch in enumerate(url_batches):
+            if count >= MAX_SAVE:
+                break
+                
+            with ThreadPoolExecutor(max_workers=8) as executor:
+                futures = {
+                    executor.submit(fetch_and_filter, (scanned + i + 1, url)): url 
+                    for i, url in enumerate(batch)
+                }
+                
+                for future in as_completed(futures):
+                    info, idx, url, error = future.result()
+                    scanned += 1
+                    
+                    if info:
+                        print(f"[{idx}/{len(urls)}] [MATCH] {info.get('카테고리', '')} - {info.get('상품명', '')[:30]}")
+                        # 즉시 DB에 저장 (메모리에 쌓지 않음)
+                        save_product_to_db(info)
+                        if count >= MAX_SAVE:
+                            break
+                    else:
+                        # 스캔 진행률 (500개마다 표시)
+                        if scanned % 500 == 0:
+                            print(f"[SCAN] {scanned}개 스캔, {count}개 저장됨...")
             
-            options = info.get("옵션", [])
-            option_count = save_product_options(product_id, options) if options else 0
-            
-            count += 1
-            sale = info.get("판매가격") or "가격 없음"
-            opt_info = f", 옵션 {option_count}개" if option_count else ""
-            print(f"  [OK] 저장 ({count}/{MAX_SAVE}): {info['상품명']} ({sale}{opt_info})")
+            # 배치 간 메모리 정리 및 짧은 대기
+            if batch_idx % 10 == 0:
+                gc.collect()
+            time.sleep(0.3)
+        
+        print(f"[SCAN] 완료: {scanned}개 스캔, {count}개 저장됨")
     
     else:
-        # 필터 없으면 순차 처리 (기존 방식)
+        # 필터 없으면 순차 처리 - 4만개 대용량 크롤링에 최적화
         try:
             for idx, url in enumerate(urls, start=1):
                 if count >= MAX_SAVE:
@@ -717,53 +734,22 @@ def main() -> None:
                 if not info:
                     continue
 
-                product_category = info.get("카테고리") or "기타"
-                category_id = ensure_category_3depth(product_category)
-                cat_info = normalize_category(product_category)
-
-                if already_exists(info["상품명"], category_id):
-                    print(f"  [SKIP] 이미 존재: {info['상품명']} ({cat_info['name']})")
-                    continue
-
-                price_val = to_price(info.get("판매가격") or "")
-                department_price = to_price(info.get("시중가격") or "")
-                description = f"{info.get('URL','')}\n{info.get('설명이미지들','')}".strip()
-                image_url = info.get("대표이미지") or ""
-
-                cur.execute(
-                    """
-                    INSERT INTO products (name, description, price, department_price, category_id, image_url, stock, is_active)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, true)
-                    RETURNING id
-                    """,
-                    (info["상품명"], description, price_val,
-                     department_price if department_price > 0 else None,
-                     category_id, image_url, 10),
-                )
-                product_id = cur.fetchone()["id"]
+                # 즉시 DB에 저장 (save_product_to_db 함수 재사용)
+                save_product_to_db(info)
                 
-                options = info.get("옵션", [])
-                option_count = save_product_options(product_id, options) if options else 0
-                
-                count += 1
-                sale = info.get("판매가격") or "가격 없음"
-                opt_info = f", 옵션 {option_count}개" if option_count else ""
-                print(f"  [OK] 저장: {info['상품명']} ({sale}{opt_info})")
+                # 메모리 정리 (1000개마다)
+                if idx % 1000 == 0:
+                    gc.collect()
+                    print(f"[MEM] {idx}개 처리, 메모리 정리 완료")
 
-                time.sleep(random.uniform(0.5, 1.5))
+                time.sleep(random.uniform(0.3, 0.8))
         except Exception as exc:
-            conn.rollback()
-            print(f"[ERROR] DB 저장 중 오류: {exc}")
+            print(f"[ERROR] 크롤링 중 오류: {exc}")
 
-    try:
-        conn.commit()
-        print(f"완료! 총 {count}개의 상품을 DB에 저장했습니다.")
-    except Exception as exc:
-        conn.rollback()
-        print(f"[ERROR] DB 저장 중 오류: {exc}")
-    finally:
-        cur.close()
-        conn.close()
+    # autocommit이므로 별도 commit 불필요, 완료 메시지만 출력
+    print(f"완료! 총 {count}개의 상품을 DB에 저장했습니다.")
+    cur.close()
+    conn.close()
 
 
 def save_to_csv(products: List[Dict], filename: str = CSV_FILENAME) -> None:
