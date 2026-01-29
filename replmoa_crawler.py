@@ -16,6 +16,15 @@ from bs4 import BeautifulSoup
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+# ============================================
+# t3.small (2GB) 최적화 설정
+# ============================================
+MAX_WORKERS = 5          # 동시 처리 워커 수 (8 → 5)
+BATCH_SIZE = 20          # 배치 크기 (30 → 20)
+SLEEP_BETWEEN_BATCH = 0.5  # 배치 간 대기 시간
+SLEEP_BETWEEN_REQUEST = 0.3  # 요청 간 최소 대기
+# ============================================
+
 # 중지 플래그 확인
 STOP_FLAG_PATH = os.environ.get("CRAWL_STOP_FLAG", "")
 STOP_REQUESTED = False
@@ -141,7 +150,7 @@ def upload_images_batch_to_s3(image_urls: List[str], prefix: str = "crawled") ->
     # 순서 보장을 위해 인덱스와 함께 처리
     s3_urls = [None] * len(image_urls)
     
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    with ThreadPoolExecutor(max_workers=3) as executor:  # S3 업로드는 3개로 제한
         # (index, url) 튜플로 제출하여 순서 추적
         futures = {
             executor.submit(upload_image_to_s3, url, prefix): (idx, url) 
@@ -198,12 +207,6 @@ def slugify(txt: str) -> str:
 def normalize_category_3depth(cat_raw: str) -> Dict[str, any]:
     """
     '남성 > 지갑 > 프라다' 형태를 3뎁스 카테고리 정보로 변환
-    Returns: {
-        "depth1": {"name": "남성", "slug": "men"},
-        "depth2": {"name": "지갑", "slug": "men-wallet"},
-        "depth3": {"name": "프라다", "slug": "men-wallet-prada"},
-        "full_name": "남성 > 지갑 > 프라다"
-    }
     """
     parts = [p.strip() for p in cat_raw.split(">") if p.strip()]
     
@@ -244,7 +247,7 @@ def normalize_category_3depth(cat_raw: str) -> Dict[str, any]:
         "depth2": None,
         "depth3": None,
         "full_name": cat_raw,
-        "leaf_slug": None,  # 최종 카테고리 슬러그 (상품에 연결될 것)
+        "leaf_slug": None,
     }
     
     # 대분류 (depth1)
@@ -273,12 +276,9 @@ def normalize_category_3depth(cat_raw: str) -> Dict[str, any]:
 
 
 def normalize_category(cat_raw: str) -> Dict[str, str]:
-    """
-    기존 호환용 - 최종 카테고리 정보만 반환
-    """
+    """기존 호환용 - 최종 카테고리 정보만 반환"""
     cat_info = normalize_category_3depth(cat_raw)
     
-    # 가장 깊은 카테고리 이름 결정
     if cat_info["depth3"]:
         name = f"{cat_info['depth1']['name']} > {cat_info['depth2']['name']} > {cat_info['depth3']['name']}"
     elif cat_info["depth2"]:
@@ -302,7 +302,6 @@ def get_product_urls() -> List[str]:
         urls: List[str] = []
         for loc in soup.find_all("loc"):
             url = loc.text
-            # 영카트/그누보드 기반 쇼핑몰의 상품 URL 패턴: item.php
             if "item.php" in url:
                 urls.append(url)
 
@@ -317,8 +316,6 @@ def parse_product_options(soup: BeautifulSoup) -> List[Dict[str, any]]:
     """상품 옵션(사이즈, 컬러 등)을 추출합니다."""
     options = []
     
-    # 그누보드/영카트 기반 쇼핑몰의 옵션 select 추출
-    # 일반적으로 sit_opt_added 또는 sit_option 영역에 select가 있음
     option_selectors = [
         "#sit_opt_added select",
         ".sit_opt_added select",
@@ -332,17 +329,14 @@ def parse_product_options(soup: BeautifulSoup) -> List[Dict[str, any]]:
     for selector in option_selectors:
         for select_tag in soup.select(selector):
             option_name = ""
-            # 옵션명 추출 (label 또는 이전 텍스트)
             label = select_tag.find_previous("label")
             if label:
                 option_name = label.get_text(strip=True)
             else:
-                # select 이전의 텍스트 노드에서 옵션명 찾기
                 prev = select_tag.find_previous(string=True)
                 if prev:
                     option_name = prev.strip().rstrip(":")
             
-            # select name 또는 id에서 옵션명 추출 시도
             if not option_name:
                 name_attr = select_tag.get("name", "") or select_tag.get("id", "")
                 if "color" in name_attr.lower() or "컬러" in name_attr:
@@ -352,14 +346,11 @@ def parse_product_options(soup: BeautifulSoup) -> List[Dict[str, any]]:
                 else:
                     option_name = "옵션"
             
-            # 옵션 값들 추출
             option_values = []
             for opt in select_tag.find_all("option"):
                 val = opt.get_text(strip=True)
-                # '선택' 같은 기본값은 제외
                 if val and "선택" not in val and val != "-":
                     import re
-                    # 추가금액 정보도 파싱
                     price_add = 0
                     if "(" in val and "원" in val:
                         price_match = re.search(r"\(([+-]?\s*[\d,]+)\s*원\)", val)
@@ -369,10 +360,8 @@ def parse_product_options(soup: BeautifulSoup) -> List[Dict[str, any]]:
                                 price_add = int(price_str)
                             except:
                                 pass
-                        # 값에서 가격 부분 제거
                         val = re.sub(r"\([+-]?\s*[\d,]+\s*원\)", "", val).strip()
                     
-                    # "+ 0원", "- 0원" 등 추가 패턴도 제거
                     val = re.sub(r"\s*[+-]\s*\d+\s*원", "", val).strip()
                     
                     if val:
@@ -387,7 +376,6 @@ def parse_product_options(soup: BeautifulSoup) -> List[Dict[str, any]]:
                     "values": option_values
                 })
     
-    # 중복 옵션 제거
     seen_names = set()
     unique_options = []
     for opt in options:
@@ -411,7 +399,7 @@ def parse_product_detail(url: str, upload_to_s3: bool = True) -> Optional[Dict[s
         title_tag = soup.select_one("#sit_title") or soup.select_one(".stitle")
         title = title_tag.text.strip() if title_tag else "상품명 없음"
 
-        # 2. 카테고리 추출 (sit_ov 영역의 카테고리 노출 텍스트 사용)
+        # 2. 카테고리 추출
         category = ""
         sit_ov = soup.select_one("#sit_ov")
         if sit_ov:
@@ -439,22 +427,19 @@ def parse_product_detail(url: str, upload_to_s3: bool = True) -> Optional[Dict[s
         if img_tag:
             img_url = img_tag.get("src", "")
             if img_url and not img_url.startswith("http"):
-                img_url = "https://replmoa1.com" + img_url  # 상대경로 처리
+                img_url = "https://replmoa1.com" + img_url
 
-        # 5. 상세 설명 내 이미지들 추출 (여러 개를 ';'로 구분)
+        # 5. 상세 설명 내 이미지들 추출
         desc_img_urls: List[str] = []
         seen = set()
         
-        # 대표 이미지가 있으면 맨 앞에 추가 (첫 번째 이미지 누락 방지)
         if img_url:
             seen.add(img_url)
             desc_img_urls.append(img_url)
-            print(f"  [IMG] 대표이미지 추가: {img_url[:60]}...")
         
-        # 메인 설명 영역 (#sit_inf_explan) 내 이미지 우선 수집
         desc_selectors = [
-            "#sit_inf_explan img",  # 상세설명 영역 (우선)
-            "#sit_inf img",         # 상품정보 전체 영역
+            "#sit_inf_explan img",
+            "#sit_inf img",
             ".sit_inf img", 
             "#sit_desc img",
             ".sit_desc img",
@@ -478,19 +463,15 @@ def parse_product_detail(url: str, upload_to_s3: bool = True) -> Optional[Dict[s
             try:
                 tags = soup.select(selector)
                 for tag in tags:
-                    # 이미지 소스 추출 (다양한 속성 확인)
                     src = tag.get("src") or tag.get("data-src") or tag.get("data-original") or tag.get("data-lazy") or ""
                     if not src:
                         continue
                     
-                    # 상대 경로 절대 경로로 변환
                     abs_src = urljoin("https://replmoa1.com", src)
                     
-                    # 유효한 이미지 URL인지 확인
                     if not any(ext in abs_src.lower() for ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']):
                         continue
                     
-                    # 너무 작은 이미지 제외 (아이콘, 버튼 등)
                     width = tag.get("width", "")
                     height = tag.get("height", "")
                     try:
@@ -501,34 +482,25 @@ def parse_product_detail(url: str, upload_to_s3: bool = True) -> Optional[Dict[s
                     except:
                         pass
                     
-                    # 중복 제외
                     if abs_src not in seen:
                         seen.add(abs_src)
                         desc_img_urls.append(abs_src)
             except Exception as e:
-                continue  # 셀렉터 오류 무시
-        
-        # 디버그: 수집된 이미지 개수 출력
-        print(f"  [IMG] 총 {len(desc_img_urls)}개 이미지 수집됨")
+                continue
 
-        # 6. 옵션(사이즈, 컬러 등) 추출
+        # 6. 옵션 추출
         options = parse_product_options(soup)
 
-        # 7. S3에 이미지 업로드 (활성화된 경우)
+        # 7. S3에 이미지 업로드
         if upload_to_s3 and s3_client:
-            # 대표 이미지 S3 업로드
             if img_url:
                 s3_img_url = upload_image_to_s3(img_url, prefix="products")
                 if s3_img_url and s3_img_url != img_url:
-                    print(f"  [S3] 대표이미지 업로드 완료")
                     img_url = s3_img_url
             
-            # 설명 이미지들 S3 업로드 (병렬 처리)
             if desc_img_urls:
-                print(f"  [S3] 설명이미지 {len(desc_img_urls)}개 업로드 중...")
                 s3_desc_urls = upload_images_batch_to_s3(desc_img_urls, prefix="products/desc")
                 desc_img_urls = s3_desc_urls
-                print(f"  [S3] 설명이미지 업로드 완료")
 
         return {
             "상품명": title,
@@ -555,20 +527,19 @@ def main() -> None:
         return
 
     print(f"크롤링 시작 (총 {len(urls)}개 후보)...")
+    print(f"[CONFIG] 워커: {MAX_WORKERS}, 배치: {BATCH_SIZE}, 대기: {SLEEP_BETWEEN_BATCH}s")
 
     # 2. DB 연결
     if not DB_CONFIG["password"]:
-        print("[ERROR] DB_PASSWORD 환경변수가 비어있습니다. .env 또는 환경변수를 설정하세요.")
+        print("[ERROR] DB_PASSWORD 환경변수가 비어있습니다.")
         return
 
     conn = psycopg2.connect(**DB_CONFIG)
-    # 크롤링 중간 종료/에러 시 이미 저장된 건을 유지하기 위해 자동 커밋 활성화
     conn.autocommit = True
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
     def slugify(text: str) -> str:
         import re
-
         slug = (
             re.sub(r"[^0-9a-zA-Z\-]+", "-", text.strip().lower())
             .strip("-")
@@ -577,11 +548,9 @@ def main() -> None:
         return slug or "etc"
 
     def ensure_category_single(name: str, slug: str, parent_id: int = None, parent_slug: str = None, depth: int = 1) -> int:
-        """단일 카테고리를 생성하거나 기존 것을 반환"""
         cur.execute("SELECT id FROM categories WHERE slug=%s", (slug,))
         row = cur.fetchone()
         if row:
-            # 기존 카테고리의 parent_slug가 비어있으면 업데이트
             if parent_slug:
                 cur.execute(
                     "UPDATE categories SET parent_slug=%s WHERE slug=%s AND (parent_slug IS NULL OR parent_slug = '')",
@@ -595,37 +564,29 @@ def main() -> None:
         return cur.fetchone()["id"]
 
     def ensure_category_3depth(cat_raw: str) -> int:
-        """3뎁스 카테고리를 생성하고 최종(leaf) 카테고리 ID 반환"""
         cat_info = normalize_category_3depth(cat_raw)
         
         parent_id = None
         parent_slug = None
         final_id = None
         
-        # depth1 (대분류)
         if cat_info["depth1"]:
             d1 = cat_info["depth1"]
             parent_id = ensure_category_single(d1["name"], d1["slug"], None, None, 1)
             parent_slug = d1["slug"]
             final_id = parent_id
         
-        # depth2 (중분류)
         if cat_info["depth2"]:
             d2 = cat_info["depth2"]
             parent_id = ensure_category_single(d2["name"], d2["slug"], parent_id, parent_slug, 2)
             parent_slug = d2["slug"]
             final_id = parent_id
         
-        # depth3 (소분류 - 브랜드 등)
         if cat_info["depth3"]:
             d3 = cat_info["depth3"]
             final_id = ensure_category_single(d3["name"], d3["slug"], parent_id, parent_slug, 3)
         
         return final_id or ensure_category_single("기타", "etc", None, None, 1)
-
-    def ensure_category(name: str, slug: str) -> int:
-        """기존 호환용"""
-        return ensure_category_single(name, slug, None, 1)
 
     def already_exists(name: str, category_id: int) -> bool:
         cur.execute(
@@ -635,7 +596,6 @@ def main() -> None:
         return cur.fetchone() is not None
 
     def save_product_options(product_id: int, options: List[Dict]) -> int:
-        """상품 옵션을 DB에 저장합니다."""
         option_count = 0
         for option in options:
             option_name = option.get("name", "옵션")
@@ -654,24 +614,19 @@ def main() -> None:
                     option_count += 1
         return option_count
 
-    # 카테고리 필터 함수
     def matches_category_filter(product_category: str) -> bool:
-        """상품 카테고리가 필터 조건에 맞는지 확인"""
         if not CATEGORY_FILTER:
-            return True  # 필터 없으면 모든 카테고리 허용
+            return True
         
         product_cat_lower = product_category.lower().strip()
         filter_lower = CATEGORY_FILTER.lower().strip()
         
-        # 정확히 일치하거나 시작하면 통과
         if product_cat_lower.startswith(filter_lower):
             return True
         
-        # 부분 문자열 포함 체크 (예: "남성"이 "남성 > 지갑 > 프라다"에 포함)
         filter_parts = [p.strip() for p in filter_lower.split(">")]
         product_parts = [p.strip() for p in product_cat_lower.split(">")]
         
-        # 필터의 모든 파트가 순서대로 상품 카테고리에 있는지 확인
         if len(filter_parts) <= len(product_parts):
             match = all(
                 filter_parts[i] == product_parts[i] 
@@ -685,14 +640,11 @@ def main() -> None:
     if CATEGORY_FILTER:
         print(f"[FILTER] 카테고리 필터 적용: '{CATEGORY_FILTER}'")
 
-    # 가격 정제 함수
     def to_price(val: str) -> float:
         digits = "".join([c for c in val if c.isdigit()])
         return float(digits) if digits else 0.0
 
-    # 병렬 크롤링으로 카테고리 필터링된 상품만 수집
     def fetch_and_filter(url_idx_tuple):
-        """URL에서 상품 정보 가져오고 카테고리 필터 적용"""
         idx, url = url_idx_tuple
         try:
             info = parse_product_detail(url)
@@ -710,7 +662,6 @@ def main() -> None:
     count = 0
     scanned = 0
     
-    # DB 저장 함수 (메모리 절약을 위해 즉시 저장)
     def save_product_to_db(info):
         nonlocal count
         
@@ -718,18 +669,16 @@ def main() -> None:
         category_id = ensure_category_3depth(product_category)
 
         if already_exists(info["상품명"], category_id):
-            print(f"  [SKIP] 이미 존재: {info['상품명']}")
             return False
 
         price_val = to_price(info.get("판매가격") or "")
         department_price = to_price(info.get("시중가격") or "")
-        # DB 제한에 맞춰 상한 적용
+        
         if price_val and price_val > MAX_DB_PRICE:
-            print(f"[WARN] 가격 상한 적용: {price_val} -> {MAX_DB_PRICE} ({info.get('상품명')})")
             price_val = MAX_DB_PRICE
         if department_price and department_price > MAX_DB_PRICE:
-            print(f"[WARN] 백화점가 상한 적용: {department_price} -> {MAX_DB_PRICE} ({info.get('상품명')})")
             department_price = MAX_DB_PRICE
+            
         description = f"{info.get('URL','')}\n{info.get('설명이미지들','')}".strip()
         image_url = info.get("대표이미지") or ""
 
@@ -746,7 +695,7 @@ def main() -> None:
             )
             product_id = cur.fetchone()["id"]
         except Exception as exc:
-            print(f"[ERROR] DB 저장 중 오류(건너뜀): {exc} / {info['상품명']}")
+            print(f"[ERROR] DB 저장 오류: {exc}")
             return False
         
         options = info.get("옵션", [])
@@ -755,88 +704,63 @@ def main() -> None:
         count += 1
         sale = info.get("판매가격") or "가격 없음"
         opt_info = f", 옵션 {option_count}개" if option_count else ""
-        print(f"  [OK] 저장 ({count}/{MAX_SAVE}): {info['상품명']} ({sale}{opt_info})")
+        print(f"  [OK] 저장 ({count}/{MAX_SAVE}): {info['상품명'][:30]} ({sale}{opt_info})")
         return True
+
+    # ============================================
+    # 병렬 처리 (필터 유무 관계없이 동일하게 적용)
+    # ============================================
+    print(f"[SCAN] 병렬 크롤링 시작 (워커 {MAX_WORKERS}개, 배치 {BATCH_SIZE}개)...")
     
-    # 필터가 있으면 병렬로 빠르게 스캔 + 즉시 저장 (메모리 절약)
-    if CATEGORY_FILTER:
-        print(f"[SCAN] 카테고리 '{CATEGORY_FILTER}' 상품을 병렬 스캔 중...")
+    url_batches = [urls[i:i+BATCH_SIZE] for i in range(0, len(urls), BATCH_SIZE)]
+    start_time = time.time()
+    
+    for batch_idx, batch in enumerate(url_batches):
+        # 중지 요청 확인
+        if check_stop_flag():
+            print(f"[STOP] 중지됨 - {count}개 저장 완료")
+            break
+        if count >= MAX_SAVE:
+            print(f"[DONE] 목표 {MAX_SAVE}개 달성!")
+            break
         
-        # 배치 크기 조절 (메모리 관리)
-        batch_size = 30  # 한 번에 30개씩 병렬 처리
-        url_batches = [urls[i:i+batch_size] for i in range(0, len(urls), batch_size)]
-        
-        for batch_idx, batch in enumerate(url_batches):
-            # 중지 요청 확인
-            if check_stop_flag():
-                print(f"[STOP] 중지됨 - {count}개 저장 완료")
-                break
-            if count >= MAX_SAVE:
-                break
-                
-            with ThreadPoolExecutor(max_workers=8) as executor:
-                futures = {
-                    executor.submit(fetch_and_filter, (scanned + i + 1, url)): url 
-                    for i, url in enumerate(batch)
-                }
-                
-                for future in as_completed(futures):
-                    # 중지 요청 확인
-                    if check_stop_flag():
-                        executor.shutdown(wait=False, cancel_futures=True)
-                        break
-                    
-                    info, idx, url, error = future.result()
-                    scanned += 1
-                    
-                    if info:
-                        print(f"[{idx}/{len(urls)}] [MATCH] {info.get('카테고리', '')} - {info.get('상품명', '')[:30]}")
-                        # 즉시 DB에 저장 (메모리에 쌓지 않음)
-                        save_product_to_db(info)
-                        if count >= MAX_SAVE:
-                            break
-                    else:
-                        # 스캔 진행률 (500개마다 표시)
-                        if scanned % 500 == 0:
-                            print(f"[SCAN] {scanned}개 스캔, {count}개 저장됨...")
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            futures = {
+                executor.submit(fetch_and_filter, (scanned + i + 1, url)): url 
+                for i, url in enumerate(batch)
+            }
             
-            # 배치 간 메모리 정리 및 짧은 대기
-            if batch_idx % 10 == 0:
-                gc.collect()
-            time.sleep(0.3)
-        
-        print(f"[SCAN] 완료: {scanned}개 스캔, {count}개 저장됨")
-    
-    else:
-        # 필터 없으면 순차 처리 - 4만개 대용량 크롤링에 최적화
-        try:
-            for idx, url in enumerate(urls, start=1):
-                # 중지 요청 확인 (100개마다)
-                if idx % 100 == 0 and check_stop_flag():
-                    print(f"[STOP] 중지됨 - {count}개 저장 완료")
+            for future in as_completed(futures):
+                if check_stop_flag():
+                    executor.shutdown(wait=False, cancel_futures=True)
                     break
-                if count >= MAX_SAVE:
-                    print(f"[STOP] 최대 {MAX_SAVE}개까지만 저장 후 중단합니다.")
-                    break
-                print(f"[{idx}/{len(urls)}] 수집 중: {url}")
-                info = parse_product_detail(url)
-                if not info:
-                    continue
-
-                # 즉시 DB에 저장 (save_product_to_db 함수 재사용)
-                save_product_to_db(info)
                 
-                # 메모리 정리 (1000개마다)
-                if idx % 1000 == 0:
-                    gc.collect()
-                    print(f"[MEM] {idx}개 처리, 메모리 정리 완료")
-
-                time.sleep(random.uniform(0.3, 0.8))
-        except Exception as exc:
-            print(f"[ERROR] 크롤링 중 오류: {exc}")
-
-    # autocommit이므로 별도 commit 불필요, 완료 메시지만 출력
-    print(f"완료! 총 {count}개의 상품을 DB에 저장했습니다.")
+                info, idx, url, error = future.result()
+                scanned += 1
+                
+                if info:
+                    save_product_to_db(info)
+                    if count >= MAX_SAVE:
+                        break
+        
+        # 진행률 표시 (10배치마다)
+        if batch_idx % 10 == 0:
+            elapsed = time.time() - start_time
+            rate = scanned / elapsed if elapsed > 0 else 0
+            remaining = (len(urls) - scanned) / rate / 3600 if rate > 0 else 0
+            print(f"[PROGRESS] {scanned}/{len(urls)} 스캔 ({scanned/len(urls)*100:.1f}%), "
+                  f"{count}개 저장, 속도: {rate:.1f}/s, 예상 남은 시간: {remaining:.1f}h")
+            gc.collect()
+        
+        time.sleep(SLEEP_BETWEEN_BATCH)
+    
+    elapsed_total = time.time() - start_time
+    print(f"\n[COMPLETE] 완료!")
+    print(f"  - 총 스캔: {scanned}개")
+    print(f"  - 저장: {count}개")
+    print(f"  - 소요 시간: {elapsed_total/3600:.2f}시간 ({elapsed_total/60:.1f}분)")
+    print(f"  - 평균 속도: {scanned/elapsed_total:.1f}개/초")
+    
     cur.close()
     conn.close()
 
@@ -854,7 +778,6 @@ def save_to_csv(products: List[Dict], filename: str = CSV_FILENAME) -> None:
         writer.writeheader()
         
         for product in products:
-            # 옵션을 JSON 문자열로 변환
             options_str = json.dumps(product.get("옵션", []), ensure_ascii=False) if product.get("옵션") else ""
             
             writer.writerow({
