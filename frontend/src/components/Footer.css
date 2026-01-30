@@ -64,6 +64,16 @@
   color: #fff;
 }
 
+.footer-account {
+  margin-top: 16px;
+}
+
+.footer-account p {
+  color: #ccc;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 .footer-bottom {
   padding-top: 20px;
   border-top: 1px solid #333;

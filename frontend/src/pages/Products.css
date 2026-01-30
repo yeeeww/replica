@@ -338,6 +338,7 @@
 	align-items: center;
 	gap: 6px;
 	margin-top: 50px;
+	flex-wrap: wrap;
 }
 
 .pagination-btn {
@@ -366,6 +367,7 @@
 .pagination-numbers {
 	display: flex;
 	gap: 4px;
+	flex-wrap: wrap;
 }
 
 .pagination-number {
@@ -503,6 +505,8 @@
 
 	.pagination {
 		margin-top: 30px;
+		justify-content: center;
+		gap: 8px;
 	}
 
 	.pagination-btn {
@@ -514,6 +518,22 @@
 		width: 32px;
 		height: 32px;
 		font-size: 12px;
+	}
+
+	/* 페이지 수가 많을 때 모바일 가로 스크롤로 안전하게 표시 */
+	.pagination-numbers {
+		flex-wrap: nowrap;
+		overflow-x: auto;
+		white-space: nowrap;
+		max-width: 100%;
+		padding: 6px 2px;
+		gap: 6px;
+		-webkit-overflow-scrolling: touch;
+	}
+
+	.pagination-number,
+	.pagination-dots {
+		flex: 0 0 auto;
 	}
 }
 
