@@ -425,6 +425,7 @@
 	gap: 8px;
 	margin-top: 4px;
 	padding: 8px 0 2px;
+	flex-wrap: wrap;
 }
 
 .search-pagination-btn {
@@ -451,6 +452,7 @@
 	display: flex;
 	align-items: center;
 	gap: 4px;
+	flex-wrap: wrap;
 }
 
 .search-pagination-number {
@@ -471,6 +473,12 @@
 
 .search-pagination-number:hover:not(.active) {
 	background: #f3f3f3;
+}
+
+.search-pagination-dots {
+	padding: 0 6px;
+	color: #999;
+	font-size: 12px;
 }
 
 .search-status {

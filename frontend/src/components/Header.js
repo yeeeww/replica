@@ -565,16 +565,47 @@ const Header = () => {
                       이전
                     </button>
                     <div className="search-pagination-numbers">
-                      {Array.from({ length: searchPagination.totalPages }, (_, i) => i + 1).map((num) => (
-                        <button
-                          key={num}
-                          type="button"
-                          className={`search-pagination-number ${num === searchPage ? 'active' : ''}`}
-                          onClick={() => handleSearchPageChange(num)}
-                        >
-                          {num}
-                        </button>
-                      ))}
+                      {(() => {
+                        const totalPages = searchPagination.totalPages;
+                        const current = searchPage;
+                        const delta = 2; // 현재 페이지 앞뒤로 보여줄 개수
+                        const pages = [];
+
+                        const start = Math.max(2, current - delta);
+                        const end = Math.min(totalPages - 1, current + delta);
+
+                        // 첫 페이지
+                        pages.push(1);
+
+                        // 시작부 ellipsis
+                        if (start > 2) pages.push('...');
+
+                        // 중간 범위
+                        for (let i = start; i <= end; i++) {
+                          if (i !== 1 && i !== totalPages) pages.push(i);
+                        }
+
+                        // 끝 ellipsis
+                        if (end < totalPages - 1) pages.push('...');
+
+                        // 마지막 페이지
+                        if (totalPages > 1) pages.push(totalPages);
+
+                        return pages.map((num, idx) =>
+                          num === '...' ? (
+                            <span key={`dots-${idx}`} className="search-pagination-dots">...</span>
+                          ) : (
+                            <button
+                              key={num}
+                              type="button"
+                              className={`search-pagination-number ${num === current ? 'active' : ''}`}
+                              onClick={() => handleSearchPageChange(num)}
+                            >
+                              {num}
+                            </button>
+                          )
+                        );
+                      })()}
                     </div>
                     <button
                       type="button"
