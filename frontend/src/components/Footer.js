@@ -24,6 +24,7 @@ const Footer = () => {
 
             <div className="footer-account">
               <p>계좌번호 : im뱅크 262-13-084376</p>
+              <p>예금주 : 장태승</p>
             </div>
           </div>
         </div>

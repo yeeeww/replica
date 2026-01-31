@@ -6,6 +6,12 @@ import { createOrder, createGuestOrder, getPublicSettings, getImageUrl } from '.
 import { formatPrice } from '../utils/format';
 import './Checkout.css';
 
+const BANK_INFO = {
+  bank: 'im뱅크',
+  account: '262-13-084376',
+  holder: '장태승'
+};
+
 const Checkout = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -233,7 +239,9 @@ const Checkout = () => {
           state: { 
             message: '주문이 완료되었습니다! 무통장 입금 후 48시간 동안 미입금시 자동 취소됩니다.',
             pointsUsed: response.data.pointsUsed,
-            pointsToEarn: response.data.pointsToEarn
+            pointsToEarn: response.data.pointsToEarn,
+            bankInfo: BANK_INFO,
+            finalAmount
           }
         });
       }
@@ -569,6 +577,24 @@ const Checkout = () => {
                 <input type="radio" name="payment" checked readOnly />
                 <span>무통장입금</span>
               </label>
+              <div className="checkout-bank-info">
+                <div className="checkout-bank-row">
+                  <span>입금은행</span>
+                  <strong>{BANK_INFO.bank}</strong>
+                </div>
+                <div className="checkout-bank-row">
+                  <span>계좌번호</span>
+                  <strong>{BANK_INFO.account}</strong>
+                </div>
+                <div className="checkout-bank-row">
+                  <span>예금주</span>
+                  <strong>{BANK_INFO.holder}</strong>
+                </div>
+                <div className="checkout-bank-row">
+                  <span>결제금액</span>
+                  <strong>{formatPrice(finalAmount)}</strong>
+                </div>
+              </div>
               <div className="checkout-form-group">
                 <label className="checkout-required-label">
                   입금자명 <span className="required-mark">필수</span>

@@ -178,6 +178,28 @@
   gap: 16px;
 }
 
+.order-bank-box {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  background: #f8f9fb;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.order-bank-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #444;
+}
+
+.order-bank-row strong {
+  color: #111;
+}
+
 .order-shipping-row,
 .order-payment-row {
   display: flex;

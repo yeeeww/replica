@@ -27,6 +27,12 @@ const OrderDetail = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(location.state?.message || '');
+  const bankInfo = location.state?.bankInfo || {
+    bank: 'im뱅크',
+    account: '262-13-084376',
+    holder: '장태승'
+  };
+  const stateFinalAmount = location.state?.finalAmount;
 
   const fetchOrder = useCallback(async () => {
     try {
@@ -162,6 +168,24 @@ const OrderDetail = () => {
 
           <div className="order-detail-section">
             <h2>결제 정보</h2>
+          <div className="order-bank-box">
+            <div className="order-bank-row">
+              <span>입금은행</span>
+              <strong>{bankInfo.bank}</strong>
+            </div>
+            <div className="order-bank-row">
+              <span>계좌번호</span>
+              <strong>{bankInfo.account}</strong>
+            </div>
+            <div className="order-bank-row">
+              <span>예금주</span>
+              <strong>{bankInfo.holder}</strong>
+            </div>
+            <div className="order-bank-row">
+              <span>결제금액</span>
+              <strong>{formatPrice(stateFinalAmount ?? (order.total_amount - (order.used_points || 0)))}</strong>
+            </div>
+          </div>
             <div className="order-payment-info">
               <div className="order-payment-row">
                 <span>상품 금액</span>
