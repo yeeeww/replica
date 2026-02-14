@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { getCategories, getProducts, getPublicSettings, getImageUrl } from '../services/api';
-import { formatPrice } from '../utils/format';
+import { getCategories, getPublicSettings } from '../services/api';
 import './Header.css';
 
 // 카테고리 영문 slug -> 한글 이름 매핑
@@ -65,11 +64,6 @@ const Header = () => {
   const { itemCount } = useCart();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchPagination, setSearchPagination] = useState(null);
-  const [searchPage, setSearchPage] = useState(1);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [searchError, setSearchError] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openSubmenu, setOpenSubmenu] = useState(null);
   const [allCategories, setAllCategories] = useState([]);
@@ -108,50 +102,18 @@ const Header = () => {
     navigate('/');
   };
 
-  const resetSearchState = () => {
-    setSearchQuery('');
-    setSearchResults([]);
-    setSearchPagination(null);
-    setSearchPage(1);
-    setSearchError('');
-    setSearchLoading(false);
-  };
-
-  const fetchSearchResults = useCallback(async (keyword, page = 1) => {
-    const trimmed = keyword.trim();
-    if (!trimmed) {
-      setSearchResults([]);
-      setSearchError('');
-      return;
-    }
-    setSearchLoading(true);
-    setSearchError('');
-    try {
-      const response = await getProducts({ search: trimmed, page, limit: 20 });
-      setSearchResults(response.data.products || []);
-      const pagination = response.data.pagination || { totalPages: 1, currentPage: page };
-      setSearchPagination(pagination);
-      setSearchPage(pagination.currentPage || page);
-    } catch (error) {
-      console.error('검색 실패:', error);
-      setSearchError('검색 결과를 불러오지 못했습니다.');
-      setSearchResults([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  }, []);
-
-  const handleSearch = async (e) => {
+  const handleSearch = (e) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      await fetchSearchResults(searchQuery, 1);
+    const trimmed = searchQuery.trim();
+    if (trimmed) {
+      navigate(`/products?search=${encodeURIComponent(trimmed)}`);
+      closeSearch();
     }
   };
 
   const toggleSearch = () => {
     if (searchOpen) {
-      resetSearchState();
-      setSearchOpen(false);
+      closeSearch();
       return;
     }
     setSearchOpen(true);
@@ -162,32 +124,9 @@ const Header = () => {
   };
 
   const closeSearch = () => {
-    resetSearchState();
+    setSearchQuery('');
     setSearchOpen(false);
   };
-
-  const handleSearchPageChange = (newPage) => {
-    if (!searchQuery.trim()) return;
-    if (searchPagination) {
-      if (newPage < 1 || newPage > (searchPagination.totalPages || 1)) return;
-    }
-    setSearchPage(newPage);
-    fetchSearchResults(searchQuery, newPage);
-  };
-
-  useEffect(() => {
-    if (!searchOpen) return;
-    const handler = setTimeout(() => {
-      if (searchQuery.trim()) {
-        setSearchPage(1);
-        fetchSearchResults(searchQuery, 1);
-      } else {
-        setSearchResults([]);
-        setSearchError('');
-      }
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [searchQuery, searchOpen, fetchSearchResults]);
 
   // DB 카테고리를 메뉴 구조로 변환
   const menuConfig = useMemo(() => {
@@ -524,99 +463,8 @@ const Header = () => {
                   ✕
                 </button>
               </form>
-              <div className="search-results">
-                {!searchQuery.trim() && !searchLoading && (
-                  <div className="search-status">상품명을 입력하면 결과가 표시됩니다.</div>
-                )}
-                {searchLoading && <div className="search-status">검색 중...</div>}
-                {searchError && !searchLoading && (
-                  <div className="search-status error">{searchError}</div>
-                )}
-                {!searchLoading && !searchError && searchQuery.trim() && searchResults.length === 0 && (
-                  <div className="search-status">일치하는 상품이 없습니다.</div>
-                )}
-                {!searchLoading && searchResults.map((product) => (
-                  <Link
-                    key={product.id}
-                    to={`/products/${product.id}`}
-                    className="search-result-item"
-                    onClick={closeSearch}
-                  >
-                    <div className="search-result-thumb">
-                      <img src={getImageUrl(product.image_url)} alt={product.name} />
-                    </div>
-                    <div className="search-result-info">
-                      <div className="search-result-name">{product.name}</div>
-                      {product.category_full_path && (
-                        <div className="search-result-meta">{product.category_full_path}</div>
-                      )}
-                      <div className="search-result-price">{formatPrice(product.price)}</div>
-                    </div>
-                  </Link>
-                ))}
-                {searchPagination?.totalPages > 1 && (
-                  <div className="search-pagination">
-                    <button
-                      type="button"
-                      className="search-pagination-btn"
-                      onClick={() => handleSearchPageChange(searchPage - 1)}
-                      disabled={searchPage === 1}
-                    >
-                      이전
-                    </button>
-                    <div className="search-pagination-numbers">
-                      {(() => {
-                        const totalPages = searchPagination.totalPages;
-                        const current = searchPage;
-                        const delta = 2; // 현재 페이지 앞뒤로 보여줄 개수
-                        const pages = [];
-
-                        const start = Math.max(2, current - delta);
-                        const end = Math.min(totalPages - 1, current + delta);
-
-                        // 첫 페이지
-                        pages.push(1);
-
-                        // 시작부 ellipsis
-                        if (start > 2) pages.push('...');
-
-                        // 중간 범위
-                        for (let i = start; i <= end; i++) {
-                          if (i !== 1 && i !== totalPages) pages.push(i);
-                        }
-
-                        // 끝 ellipsis
-                        if (end < totalPages - 1) pages.push('...');
-
-                        // 마지막 페이지
-                        if (totalPages > 1) pages.push(totalPages);
-
-                        return pages.map((num, idx) =>
-                          num === '...' ? (
-                            <span key={`dots-${idx}`} className="search-pagination-dots">...</span>
-                          ) : (
-                            <button
-                              key={num}
-                              type="button"
-                              className={`search-pagination-number ${num === current ? 'active' : ''}`}
-                              onClick={() => handleSearchPageChange(num)}
-                            >
-                              {num}
-                            </button>
-                          )
-                        );
-                      })()}
-                    </div>
-                    <button
-                      type="button"
-                      className="search-pagination-btn"
-                      onClick={() => handleSearchPageChange(searchPage + 1)}
-                      disabled={searchPage === searchPagination.totalPages}
-                    >
-                      다음
-                    </button>
-                  </div>
-                )}
+              <div className="search-hint">
+                Enter를 누르면 검색 결과 페이지로 이동합니다.
               </div>
             </div>
           </div>

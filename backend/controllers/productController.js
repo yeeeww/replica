@@ -122,7 +122,7 @@ exports.getProducts = async (req, res) => {
         const { path, pathArray } = await getCategoryFullPath(client, product.category_id);
         return {
           ...product,
-          category_full_path: path,  // "남성 > 지갑 > 프라다"
+          category_full_path: path,  // "남성 > 가방 > 고야드 > 크로스&숄더백"
           category_path_array: pathArray
         };
       })
@@ -192,7 +192,7 @@ exports.getProduct = async (req, res) => {
 
     const product = result.rows[0];
     product.options = optionsGrouped;
-    product.category_full_path = categoryFullPath;  // "남성 > 지갑 > 프라다"
+    product.category_full_path = categoryFullPath;  // "남성 > 가방 > 고야드 > 크로스&숄더백"
     product.category_path_array = categoryPathArray;
 
     res.json({ product });

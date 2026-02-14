@@ -17,12 +17,24 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 # ============================================
-# t3.small (2GB) 최적화 설정
+# t3.medium (4GB) 속도 최적화 설정
 # ============================================
-MAX_WORKERS = 5          # 동시 처리 워커 수 (8 → 5)
-BATCH_SIZE = 20          # 배치 크기 (30 → 20)
-SLEEP_BETWEEN_BATCH = 0.5  # 배치 간 대기 시간
-SLEEP_BETWEEN_REQUEST = 0.3  # 요청 간 최소 대기
+SPEED_MODE = os.environ.get("CRAWL_SPEED_MODE", "normal")  # "fast" 또는 "normal"
+
+if SPEED_MODE == "fast":
+    MAX_WORKERS = 15         # 동시 처리 워커 수 (I/O 바운드이므로 높여도 OK)
+    BATCH_SIZE = 60          # 배치 크기
+    SLEEP_BETWEEN_BATCH = 0.1  # 배치 간 대기 시간
+    SLEEP_BETWEEN_REQUEST = 0.05  # 요청 간 최소 대기
+    URL_COLLECT_WORKERS = 8   # URL 수집 동시 요청 수
+else:
+    MAX_WORKERS = 10         # 동시 처리 워커 수 (기본도 올림)
+    BATCH_SIZE = 40          # 배치 크기
+    SLEEP_BETWEEN_BATCH = 0.3  # 배치 간 대기 시간
+    SLEEP_BETWEEN_REQUEST = 0.15  # 요청 간 최소 대기
+    URL_COLLECT_WORKERS = 5   # URL 수집 동시 요청 수
+# ============================================
+SKIP_S3_UPLOAD = os.environ.get("CRAWL_SKIP_S3", "false").lower() == "true"
 # ============================================
 
 # 중지 플래그 확인
@@ -95,7 +107,7 @@ def upload_image_to_s3(image_url: str, prefix: str = "crawled") -> Optional[str]
     
     try:
         # 이미지 다운로드
-        response = requests.get(image_url, headers=HEADERS, timeout=30)
+        response = http_session.get(image_url, timeout=30)
         if response.status_code != 200:
             print(f"[S3] 이미지 다운로드 실패: {image_url}")
             return image_url
@@ -177,6 +189,18 @@ HEADERS = {
         "Chrome/91.0.4472.124 Safari/537.36"
     )
 }
+
+# HTTP Session (연결 재사용 → TCP handshake 절약, 속도 2~3배 향상)
+http_session = requests.Session()
+http_session.headers.update(HEADERS)
+# 연결 풀 크기를 워커 수에 맞춰 설정
+adapter = requests.adapters.HTTPAdapter(
+    pool_connections=MAX_WORKERS + URL_COLLECT_WORKERS,
+    pool_maxsize=MAX_WORKERS + URL_COLLECT_WORKERS,
+    max_retries=2
+)
+http_session.mount('https://', adapter)
+http_session.mount('http://', adapter)
 CSV_FILENAME = "replmoa_products.csv"
 DB_CONFIG = {
     "host": os.environ.get("DB_HOST", "localhost"),
@@ -185,8 +209,10 @@ DB_CONFIG = {
     "user": os.environ.get("DB_USER", "postgres"),
     "password": os.environ.get("DB_PASSWORD", "1234"),
 }
-MAX_SAVE = int(os.environ.get("CRAWL_LIMIT", "50"))
+_raw_limit = os.environ.get("CRAWL_LIMIT", "500")
+MAX_SAVE = 999999 if _raw_limit == "0" else int(_raw_limit)  # 0 = 무제한 (전체 크롤링)
 CATEGORY_FILTER = os.environ.get("CRAWL_CATEGORY", "")  # 예: "남성", "여성", "남성 > 지갑" 등
+URL_SOURCE = os.environ.get("CRAWL_URL_SOURCE", "both")  # "sitemap", "category", "both"
 MAX_DB_PRICE = 9999999999999.99  # numeric(15,2) 확장 후 상한 (약 10조원)
 
 # 메모리 관리를 위한 gc import
@@ -204,9 +230,10 @@ def slugify(txt: str) -> str:
     return slug or "etc"
 
 
-def normalize_category_3depth(cat_raw: str) -> Dict[str, any]:
+def normalize_category_4depth(cat_raw: str) -> Dict[str, any]:
     """
-    '남성 > 지갑 > 프라다' 형태를 3뎁스 카테고리 정보로 변환
+    '남성 > 가방 > 고야드 > 크로스&숄더백' 형태를 4뎁스 카테고리 정보로 변환
+    3뎁스('남성 > 지갑 > 프라다')도 호환 처리
     """
     parts = [p.strip() for p in cat_raw.split(">") if p.strip()]
     
@@ -220,7 +247,7 @@ def normalize_category_3depth(cat_raw: str) -> Dict[str, any]:
         "국내 출고": "domestic",
     }
     
-    # 중분류 매핑 (대분류별)
+    # 중분류 매핑 (상품 종류)
     sub_map = {
         "가방": "bag",
         "지갑": "wallet",
@@ -242,22 +269,98 @@ def normalize_category_3depth(cat_raw: str) -> Dict[str, any]:
         "라이터": "lighter",
     }
     
+    # 세부 카테고리 매핑 (depth4 - 가방/지갑/신발/의류 하위 등)
+    detail_map = {
+        # 가방 하위
+        "크로스&숄더백": "crossbody-shoulder",
+        "크로스백": "crossbody",
+        "숄더백": "shoulder",
+        "토트백": "tote",
+        "클러치": "clutch",
+        "클러치&파우치": "clutch-pouch",
+        "파우치": "pouch",
+        "백팩": "backpack",
+        "서류가방": "briefcase",
+        "여행가방": "luggage",
+        "미니백": "mini",
+        "핸드백": "handbag",
+        "호보백": "hobo",
+        "버킷백": "bucket",
+        # 지갑 하위
+        "카드지갑": "card-wallet",
+        "반지갑": "half-wallet",
+        "장지갑": "long-wallet",
+        "지퍼월렛": "zip-wallet",
+        "코인지갑": "coin-wallet",
+        "키홀더": "key-holder",
+        # 신발 하위
+        "스니커즈": "sneakers",
+        "로퍼": "loafer",
+        "부츠": "boots",
+        "샌들": "sandal",
+        "슬리퍼": "slipper",
+        "힐": "heel",
+        "플랫": "flat",
+        "뮬": "mule",
+        # 의류 하위
+        "아우터": "outer",
+        "자켓": "jacket",
+        "코트": "coat",
+        "패딩": "padding",
+        "다운": "down",
+        "점퍼": "jumper",
+        "상의": "top",
+        "티셔츠": "tshirt",
+        "반팔": "short-sleeve",
+        "긴팔": "long-sleeve",
+        "니트": "knit",
+        "맨투맨": "sweatshirt",
+        "후드": "hoodie",
+        "셔츠": "shirt",
+        "블라우스": "blouse",
+        "하의": "bottom",
+        "팬츠": "pants",
+        "바지": "pants",
+        "청바지": "jeans",
+        "데님": "denim",
+        "스커트": "skirt",
+        "치마": "skirt",
+        "반바지": "shorts",
+        "원피스": "dress",
+        "드레스": "dress",
+        "정장": "suit",
+        "트레이닝": "training",
+        "세트": "set",
+        # 악세서리 하위
+        "목걸이": "necklace",
+        "팔찌": "bracelet",
+        "반지": "ring",
+        "귀걸이": "earring",
+        "브로치": "brooch",
+        "스카프": "scarf",
+        "머플러": "muffler",
+        "넥타이": "necktie",
+        "장갑": "gloves",
+        "양말": "socks",
+    }
+    
     result = {
         "depth1": None,
         "depth2": None,
         "depth3": None,
+        "depth4": None,
         "full_name": cat_raw,
         "leaf_slug": None,
     }
     
-    # 대분류 (depth1)
+    # 대분류 (depth1) - 성별/유형: 남성, 여성, 국내출고상품
     if parts:
         main_name = parts[0]
         main_slug = main_map.get(main_name, slugify(main_name))
         result["depth1"] = {"name": main_name, "slug": main_slug}
         result["leaf_slug"] = main_slug
     
-    # 중분류 (depth2)
+    # 중분류 (depth2) - 상품 종류: 가방, 지갑, 시계 등
     if len(parts) > 1:
         sub_name = parts[1]
         sub_slug_base = sub_map.get(sub_name, slugify(sub_name))
@@ -265,37 +368,49 @@ def normalize_category_3depth(cat_raw: str) -> Dict[str, any]:
         result["depth2"] = {"name": sub_name, "slug": sub_slug, "parent_slug": result["depth1"]["slug"]}
         result["leaf_slug"] = sub_slug
     
-    # 소분류 (depth3) - 브랜드 등
+    # 소분류 (depth3) - 브랜드: 고야드, 프라다, 구찌 등
     if len(parts) > 2:
         brand_name = parts[2]
         brand_slug = f"{result['depth2']['slug']}-{slugify(brand_name)}"
         result["depth3"] = {"name": brand_name, "slug": brand_slug, "parent_slug": result["depth2"]["slug"]}
         result["leaf_slug"] = brand_slug
     
+    # 세부분류 (depth4) - 세부 카테고리: 크로스&숄더백, 토트백 등
+    if len(parts) > 3:
+        detail_name = parts[3]
+        detail_slug_base = detail_map.get(detail_name, slugify(detail_name))
+        detail_slug = f"{result['depth3']['slug']}-{detail_slug_base}"
+        result["depth4"] = {"name": detail_name, "slug": detail_slug, "parent_slug": result["depth3"]["slug"]}
+        result["leaf_slug"] = detail_slug
+    
     return result
+
+
+# 기존 3뎁스 호환 래퍼
+def normalize_category_3depth(cat_raw: str) -> Dict[str, any]:
+    """기존 호환용 - normalize_category_4depth의 래퍼"""
+    return normalize_category_4depth(cat_raw)
 
 
 def normalize_category(cat_raw: str) -> Dict[str, str]:
     """기존 호환용 - 최종 카테고리 정보만 반환"""
-    cat_info = normalize_category_3depth(cat_raw)
+    cat_info = normalize_category_4depth(cat_raw)
     
-    if cat_info["depth3"]:
-        name = f"{cat_info['depth1']['name']} > {cat_info['depth2']['name']} > {cat_info['depth3']['name']}"
-    elif cat_info["depth2"]:
-        name = f"{cat_info['depth1']['name']} > {cat_info['depth2']['name']}"
-    elif cat_info["depth1"]:
-        name = cat_info["depth1"]["name"]
-    else:
-        name = "기타"
+    name_parts = []
+    for depth_key in ["depth1", "depth2", "depth3", "depth4"]:
+        if cat_info[depth_key]:
+            name_parts.append(cat_info[depth_key]["name"])
+    
+    name = " > ".join(name_parts) if name_parts else "기타"
     
     return {"name": name, "slug": cat_info["leaf_slug"] or "etc"}
 
 
-def get_product_urls() -> List[str]:
+def get_product_urls_from_sitemap() -> List[str]:
     """사이트맵에서 상품 상세 페이지 URL을 추출합니다."""
-    print(f"사이트맵 불러오는 중: {SITEMAP_URL}")
+    print(f"[SITEMAP] 사이트맵 불러오는 중: {SITEMAP_URL}")
     try:
-        response = requests.get(SITEMAP_URL, headers=HEADERS, timeout=15)
+        response = http_session.get(SITEMAP_URL, timeout=15)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, "xml")
 
@@ -305,11 +420,225 @@ def get_product_urls() -> List[str]:
             if "item.php" in url:
                 urls.append(url)
 
-        print(f"총 {len(urls)}개의 상품 URL을 찾았습니다.")
+        print(f"[SITEMAP] 사이트맵에서 {len(urls)}개의 상품 URL 발견")
         return urls
     except Exception as exc:
-        print(f"사이트맵 로드 실패: {exc}")
+        print(f"[SITEMAP] 사이트맵 로드 실패: {exc}")
         return []
+
+
+# ============================================
+# 카테고리 리스트 페이지 기반 URL 수집
+# ============================================
+BASE_URL = "https://replmoa1.com"
+
+# 알려진 최상위 카테고리 ID
+KNOWN_TOP_CATEGORIES = {
+    "10": "남성",
+    "20": "여성",
+    "30": "국내출고상품",
+}
+
+
+
+def get_product_urls_from_category_page(ca_id: str, page: int = 1) -> List[str]:
+    """
+    카테고리 리스트 페이지에서 상품 URL을 추출합니다.
+    Returns: 해당 페이지의 상품 URL 리스트 (빈 리스트면 마지막 페이지)
+    """
+    import re
+    url = f"{BASE_URL}/shop/list.php?ca_id={ca_id}&page={page}"
+    try:
+        time.sleep(SLEEP_BETWEEN_REQUEST)
+        response = http_session.get(url, timeout=15)
+        if response.status_code != 200:
+            return []
+        
+        soup = BeautifulSoup(response.text, "html.parser")
+        
+        # 상품 링크 추출 (item.php?it_id=xxxxx)
+        # "베스트상품" 영역 제외 - 실제 리스트 상품만 추출
+        product_urls = []
+        seen = set()
+        
+        # 베스트상품 it_id를 먼저 수집하여 제외
+        best_ids = set()
+        best_section = soup.select_one(".best_item, .best_products, #best")
+        if best_section:
+            for a_tag in best_section.find_all("a", href=True):
+                m = re.search(r"it_id=(\d+)", a_tag["href"])
+                if m:
+                    best_ids.add(m.group(1))
+        
+        for a_tag in soup.find_all("a", href=True):
+            href = a_tag["href"]
+            if "item.php" in href and "it_id=" in href:
+                match = re.search(r"it_id=(\d+)", href)
+                if match:
+                    it_id = match.group(1)
+                    if it_id not in seen:
+                        seen.add(it_id)
+                        clean_url = f"{BASE_URL}/shop/item.php?it_id={it_id}"
+                        product_urls.append(clean_url)
+        
+        return product_urls
+        
+    except Exception as e:
+        print(f"[CATEGORY] 페이지 로드 실패 ({ca_id}, page={page}): {e}")
+        return []
+
+
+def _fetch_category_page_batch(ca_id: str, pages: List[int]) -> Dict[int, List[str]]:
+    """여러 페이지를 병렬로 가져옵니다."""
+    results = {}
+    
+    def fetch_one(page):
+        return page, get_product_urls_from_category_page(ca_id, page)
+    
+    with ThreadPoolExecutor(max_workers=URL_COLLECT_WORKERS) as executor:
+        futures = {executor.submit(fetch_one, p): p for p in pages}
+        for future in as_completed(futures):
+            try:
+                page, urls = future.result()
+                results[page] = urls
+            except Exception:
+                results[futures[future]] = []
+    
+    return results
+
+
+def get_product_urls_from_categories(category_filter: str = "") -> List[str]:
+    """
+    최상위 카테고리(남성/여성/국내출고) 리스트 페이지를 끝까지 순회하며 
+    모든 상품 URL을 수집합니다.
+    
+    병렬 페이지 수집: 한 번에 여러 페이지를 동시에 요청하여 수집 속도를 대폭 향상합니다.
+    """
+    import re
+    print("[CATEGORY] 카테고리 리스트 페이지에서 상품 URL 수집 시작...")
+    print(f"[CATEGORY] 병렬 수집 모드 (동시 {URL_COLLECT_WORKERS}페이지씩)")
+    
+    # 크롤링 대상 최상위 카테고리 결정
+    target_categories = dict(KNOWN_TOP_CATEGORIES)
+    
+    if category_filter:
+        filter_lower = category_filter.lower().strip().split(">")[0].strip()
+        filtered = {}
+        for ca_id, name in KNOWN_TOP_CATEGORIES.items():
+            if filter_lower in name.lower():
+                filtered[ca_id] = name
+        if filtered:
+            target_categories = filtered
+            print(f"[CATEGORY] 필터 '{category_filter}' 적용: {list(target_categories.values())}")
+    
+    all_urls = []
+    seen_urls = set()
+    
+    for ca_id, cat_name in target_categories.items():
+        if check_stop_flag():
+            break
+        
+        print(f"[CATEGORY] === '{cat_name}' (ca_id={ca_id}) 병렬 페이지 순회 시작 ===")
+        page = 1
+        max_pages = 2000
+        cat_urls = 0
+        consecutive_no_new = 0
+        finished = False
+        
+        while page <= max_pages and not finished:
+            if check_stop_flag():
+                break
+            
+            # 한 번에 URL_COLLECT_WORKERS 페이지씩 병렬 수집
+            page_batch = list(range(page, min(page + URL_COLLECT_WORKERS, max_pages + 1)))
+            batch_results = _fetch_category_page_batch(ca_id, page_batch)
+            
+            # 순서대로 처리 (페이지 번호 순)
+            for p in sorted(batch_results.keys()):
+                if check_stop_flag():
+                    finished = True
+                    break
+                
+                urls = batch_results[p]
+                
+                # 상품이 없으면 마지막 페이지
+                if not urls:
+                    print(f"[CATEGORY] '{cat_name}' page={p}: 상품 없음 → 완료")
+                    finished = True
+                    break
+                
+                # 현재 페이지의 it_id 추출
+                current_ids = set()
+                for u in urls:
+                    m = re.search(r"it_id=(\d+)", u)
+                    if m:
+                        current_ids.add(m.group(1))
+                
+                new_count = 0
+                for url in urls:
+                    if url not in seen_urls:
+                        seen_urls.add(url)
+                        all_urls.append(url)
+                        new_count += 1
+                        cat_urls += 1
+                
+                # 새 URL이 없으면 카운트
+                if new_count == 0:
+                    consecutive_no_new += 1
+                    if consecutive_no_new >= 3:
+                        print(f"[CATEGORY] '{cat_name}' page={p}: 3페이지 연속 새 URL 없음 → 완료")
+                        finished = True
+                        break
+                else:
+                    consecutive_no_new = 0
+            
+            # 진행 상황 로그
+            if page % 50 < URL_COLLECT_WORKERS:
+                print(f"[CATEGORY] '{cat_name}' page~{page + len(page_batch) - 1}: 누적 {cat_urls}개 수집 중...")
+            
+            page += len(page_batch)
+        
+        print(f"[CATEGORY] '{cat_name}': 총 {cat_urls}개 상품 URL 수집 완료 (~{page-1}페이지)")
+    
+    print(f"[CATEGORY] 카테고리 리스트에서 총 {len(all_urls)}개 상품 URL 수집 완료")
+    return all_urls
+
+
+def get_product_urls() -> List[str]:
+    """사이트맵과 카테고리 리스트 페이지를 병합하여 상품 URL을 수집합니다."""
+    all_urls = []
+    seen = set()
+    
+    source = URL_SOURCE.lower().strip()
+    
+    # 1. 사이트맵에서 수집
+    if source in ("sitemap", "both"):
+        sitemap_urls = get_product_urls_from_sitemap()
+        for url in sitemap_urls:
+            # URL 정규화
+            clean = url.strip()
+            if clean and clean not in seen:
+                seen.add(clean)
+                all_urls.append(clean)
+        print(f"[COLLECT] 사이트맵에서 {len(sitemap_urls)}개 수집 (중복 제거 후: {len(all_urls)}개)")
+    
+    # 2. 카테고리 리스트 페이지에서 수집
+    if source in ("category", "both"):
+        category_urls = get_product_urls_from_categories(CATEGORY_FILTER)
+        new_from_category = 0
+        for url in category_urls:
+            clean = url.strip()
+            if clean and clean not in seen:
+                seen.add(clean)
+                all_urls.append(clean)
+                new_from_category += 1
+        print(f"[COLLECT] 카테고리 페이지에서 {len(category_urls)}개 수집 (신규: {new_from_category}개)")
+    
+    # 3. URL 셔플 (특정 카테고리에 편중되지 않도록)
+    random.shuffle(all_urls)
+    
+    print(f"[COLLECT] 총 {len(all_urls)}개 고유 상품 URL 수집 완료")
+    return all_urls
 
 
 def parse_product_options(soup: BeautifulSoup) -> List[Dict[str, any]]:
@@ -389,7 +718,7 @@ def parse_product_options(soup: BeautifulSoup) -> List[Dict[str, any]]:
 def parse_product_detail(url: str, upload_to_s3: bool = True) -> Optional[Dict[str, any]]:
     """개별 상품 페이지에서 정보를 추출합니다."""
     try:
-        response = requests.get(url, headers=HEADERS, timeout=15)
+        response = http_session.get(url, timeout=15)
         if response.status_code != 200:
             return None
 
@@ -491,8 +820,8 @@ def parse_product_detail(url: str, upload_to_s3: bool = True) -> Optional[Dict[s
         # 6. 옵션 추출
         options = parse_product_options(soup)
 
-        # 7. S3에 이미지 업로드
-        if upload_to_s3 and s3_client:
+        # 7. S3에 이미지 업로드 (SKIP_S3_UPLOAD=true이면 원본 URL 그대로 사용)
+        if not SKIP_S3_UPLOAD and upload_to_s3 and s3_client:
             if img_url:
                 s3_img_url = upload_image_to_s3(img_url, prefix="products")
                 if s3_img_url and s3_img_url != img_url:
@@ -527,7 +856,10 @@ def main() -> None:
         return
 
     print(f"크롤링 시작 (총 {len(urls)}개 후보)...")
-    print(f"[CONFIG] 워커: {MAX_WORKERS}, 배치: {BATCH_SIZE}, 대기: {SLEEP_BETWEEN_BATCH}s")
+    speed_label = "⚡ 고속" if SPEED_MODE == "fast" else "일반"
+    s3_label = "스킵 (원본 URL 사용)" if SKIP_S3_UPLOAD else "활성화"
+    print(f"[CONFIG] 모드: {speed_label}, 워커: {MAX_WORKERS}, 배치: {BATCH_SIZE}, 대기: {SLEEP_BETWEEN_BATCH}s")
+    print(f"[CONFIG] S3 업로드: {s3_label}, URL 수집 병렬: {URL_COLLECT_WORKERS}페이지")
 
     # 2. DB 연결
     if not DB_CONFIG["password"]:
@@ -563,8 +895,8 @@ def main() -> None:
         )
         return cur.fetchone()["id"]
 
-    def ensure_category_3depth(cat_raw: str) -> int:
-        cat_info = normalize_category_3depth(cat_raw)
+    def ensure_category_4depth(cat_raw: str) -> int:
+        cat_info = normalize_category_4depth(cat_raw)
         
         parent_id = None
         parent_slug = None
@@ -584,9 +916,19 @@ def main() -> None:
         
         if cat_info["depth3"]:
             d3 = cat_info["depth3"]
-            final_id = ensure_category_single(d3["name"], d3["slug"], parent_id, parent_slug, 3)
+            parent_id = ensure_category_single(d3["name"], d3["slug"], parent_id, parent_slug, 3)
+            parent_slug = d3["slug"]
+            final_id = parent_id
+        
+        if cat_info["depth4"]:
+            d4 = cat_info["depth4"]
+            final_id = ensure_category_single(d4["name"], d4["slug"], parent_id, parent_slug, 4)
         
         return final_id or ensure_category_single("기타", "etc", None, None, 1)
+
+    # 기존 호환용
+    def ensure_category_3depth(cat_raw: str) -> int:
+        return ensure_category_4depth(cat_raw)
 
     def already_exists(name: str, category_id: int) -> bool:
         cur.execute(
@@ -594,6 +936,28 @@ def main() -> None:
             (name, category_id),
         )
         return cur.fetchone() is not None
+
+    # URL 기반 빠른 중복 체크용 캐시 (it_id → True)
+    # DB에 저장된 상품의 URL에서 it_id를 추출하여 캐시
+    existing_it_ids = set()
+    try:
+        import re as _re
+        cur.execute("SELECT description FROM products WHERE description LIKE '%it_id=%'")
+        for row in cur:
+            m = _re.search(r"it_id=(\d+)", row["description"])
+            if m:
+                existing_it_ids.add(m.group(1))
+        print(f"[SKIP] 기존 상품 {len(existing_it_ids)}개의 it_id 캐시 완료")
+    except Exception as e:
+        print(f"[SKIP] it_id 캐시 로드 실패 (무시): {e}")
+
+    def is_already_crawled_by_url(url: str) -> bool:
+        """URL의 it_id로 빠르게 중복 체크 (DB 쿼리 없이 메모리에서)"""
+        import re as _re
+        m = _re.search(r"it_id=(\d+)", url)
+        if m and m.group(1) in existing_it_ids:
+            return True
+        return False
 
     def save_product_options(product_id: int, options: List[Dict]) -> int:
         option_count = 0
@@ -647,6 +1011,10 @@ def main() -> None:
     def fetch_and_filter(url_idx_tuple):
         idx, url = url_idx_tuple
         try:
+            # 빠른 중복 체크 (파싱 전에 it_id로 확인 → 네트워크 요청 절약)
+            if is_already_crawled_by_url(url):
+                return None, idx, url, "이미 수집된 상품 (스킵)"
+            
             info = parse_product_detail(url)
             if not info:
                 return None, idx, url, "파싱 실패"
@@ -666,7 +1034,7 @@ def main() -> None:
         nonlocal count
         
         product_category = info.get("카테고리") or "기타"
-        category_id = ensure_category_3depth(product_category)
+        category_id = ensure_category_4depth(product_category)
 
         if already_exists(info["상품명"], category_id):
             return False
@@ -705,11 +1073,20 @@ def main() -> None:
         sale = info.get("판매가격") or "가격 없음"
         opt_info = f", 옵션 {option_count}개" if option_count else ""
         print(f"  [OK] 저장 ({count}/{MAX_SAVE}): {info['상품명'][:30]} ({sale}{opt_info})")
+        
+        # 저장 성공 시 it_id 캐시에 추가 (같은 세션 중복 방지)
+        import re as _re
+        m = _re.search(r"it_id=(\d+)", info.get("URL", ""))
+        if m:
+            existing_it_ids.add(m.group(1))
+        
         return True
 
     # ============================================
     # 병렬 처리 (필터 유무 관계없이 동일하게 적용)
     # ============================================
+    if SKIP_S3_UPLOAD:
+        print(f"[S3] S3 업로드 스킵 모드 - 원본 이미지 URL을 그대로 사용합니다.")
     print(f"[SCAN] 병렬 크롤링 시작 (워커 {MAX_WORKERS}개, 배치 {BATCH_SIZE}개)...")
     
     url_batches = [urls[i:i+BATCH_SIZE] for i in range(0, len(urls), BATCH_SIZE)]

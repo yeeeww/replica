@@ -51,8 +51,8 @@ const initDatabase = async () => {
       );
     `);
 
-    // Create categories table (3뎁스 지원: 대분류 > 중분류 > 소분류)
-    // parent_slug: 고정된 대분류-중분류 slug (예: men-wallet, women-bag)
+    // Create categories table (4뎁스 지원: 성별 > 상품종류 > 브랜드 > 세부카테고리)
+    // 예: 남성 > 가방 > 고야드 > 크로스&숄더백
     await client.query(`
       CREATE TABLE categories (
         id SERIAL PRIMARY KEY,

@@ -61,6 +61,17 @@ const ProtectedRoute = ({ children }) => {
   return isAuthenticated ? children : <Navigate to="/login" />;
 };
 
+// Guest Route Component (로그인 상태면 메인으로 리다이렉트)
+const GuestRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return <div className="container loading">로딩 중...</div>;
+  }
+
+  return isAuthenticated ? <Navigate to="/" /> : children;
+};
+
 // Admin Route Component
 const AdminRoute = ({ children }) => {
   const { isAdmin, loading } = useAuth();
@@ -88,9 +99,9 @@ function App() {
                 <Route path="/products/:id" element={<ProductDetail />} />
                 <Route path="/notices" element={<Notices />} />
                 <Route path="/notices/:id" element={<NoticeDetail />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/register" element={<Register />} />
+                <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
+                <Route path="/terms" element={<GuestRoute><Terms /></GuestRoute>} />
+                <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
                 <Route path="/order-lookup" element={<GuestOrderLookup />} />
 
                 {/* Cart & Checkout - 비회원도 접근 가능 */}

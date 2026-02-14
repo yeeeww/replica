@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { startCrawl, stopCrawl, getCrawlStatus, clearCrawlLogs } from '../../services/api';
 import './AdminCrawler.css';
 
-// 카테고리 옵션
+// 카테고리 옵션 (4뎁스 지원: 성별 > 상품종류 > 브랜드 > 세부카테고리)
 const CATEGORY_OPTIONS = [
   { value: '', label: '전체 (필터 없음)' },
   { value: '남성', label: '남성' },
@@ -12,6 +12,9 @@ const CATEGORY_OPTIONS = [
   { value: '남성 > 신발', label: '남성 > 신발' },
   { value: '남성 > 벨트', label: '남성 > 벨트' },
   { value: '남성 > 의류', label: '남성 > 의류' },
+  { value: '남성 > 악세서리', label: '남성 > 악세서리' },
+  { value: '남성 > 모자', label: '남성 > 모자' },
+  { value: '남성 > 선글라스', label: '남성 > 선글라스' },
   { value: '여성', label: '여성' },
   { value: '여성 > 가방', label: '여성 > 가방' },
   { value: '여성 > 지갑', label: '여성 > 지갑' },
@@ -19,14 +22,35 @@ const CATEGORY_OPTIONS = [
   { value: '여성 > 신발', label: '여성 > 신발' },
   { value: '여성 > 벨트', label: '여성 > 벨트' },
   { value: '여성 > 의류', label: '여성 > 의류' },
+  { value: '여성 > 악세서리', label: '여성 > 악세서리' },
+  { value: '여성 > 모자', label: '여성 > 모자' },
+  { value: '여성 > 선글라스', label: '여성 > 선글라스' },
   { value: '국내출고상품', label: '국내출고상품' },
 ];
 
+const URL_SOURCE_OPTIONS = [
+  { value: 'both', label: '사이트맵 + 카테고리 (권장)', desc: '사이트맵과 카테고리 페이지를 모두 탐색하여 최대한 많은 상품을 수집합니다.' },
+  { value: 'category', label: '카테고리 페이지만', desc: '카테고리 리스트 페이지를 순회하며 상품을 수집합니다. 사이트맵에 누락된 상품도 포함됩니다.' },
+  { value: 'sitemap', label: '사이트맵만 (기존 방식)', desc: 'sitemap3.xml에서 URL을 수집합니다. 사이트맵이 불완전하면 상품이 누락될 수 있습니다.' },
+];
+
+const CRAWL_LIMIT_PRESETS = [
+  { value: 100, label: '100개' },
+  { value: 500, label: '500개' },
+  { value: 1000, label: '1,000개' },
+  { value: 5000, label: '5,000개' },
+  { value: 0, label: '전체 (무제한)' },
+];
+
 const AdminCrawler = () => {
-  const [crawlLimit, setCrawlLimit] = useState(20);
+  const [crawlLimit, setCrawlLimit] = useState(100);
+  const [unlimitedMode, setUnlimitedMode] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('');
   const [customCategory, setCustomCategory] = useState('');
   const [useCustomCategory, setUseCustomCategory] = useState(false);
+  const [urlSource, setUrlSource] = useState('both');
+  const [speedMode, setSpeedMode] = useState('normal');
+  const [skipS3, setSkipS3] = useState(false);
   const [status, setStatus] = useState({
     isRunning: false,
     logs: [],
@@ -97,8 +121,11 @@ const AdminCrawler = () => {
     
     try {
       const response = await startCrawl({ 
-        limit: crawlLimit,
-        category: category
+        limit: unlimitedMode ? 0 : crawlLimit,
+        category: category,
+        urlSource: urlSource,
+        speedMode: speedMode,
+        skipS3: skipS3
       });
       setMessage({ type: 'success', text: response.data.message });
       fetchStatus();
@@ -144,9 +171,12 @@ const AdminCrawler = () => {
   };
 
   // 진행률 계산
-  const progress = status.targetCount > 0 
-    ? Math.min(100, Math.round((status.savedCount / status.targetCount) * 100))
-    : 0;
+  const isUnlimitedTarget = status.targetCount === 0 || status.targetCount >= 999999;
+  const progress = isUnlimitedTarget
+    ? 0
+    : (status.targetCount > 0 
+      ? Math.min(100, Math.round((status.savedCount / status.targetCount) * 100))
+      : 0);
 
   return (
     <div className="admin-crawler">
@@ -164,17 +194,62 @@ const AdminCrawler = () => {
       <div className="crawler-controls">
         <div className="control-row">
           <div className="control-group">
-            <label>크롤링 개수</label>
-            <div className="limit-input-wrapper">
-              <input
-                type="number"
-                min="1"
-                value={crawlLimit}
-                onChange={(e) => setCrawlLimit(Math.max(1, parseInt(e.target.value) || 1))}
-                disabled={status.isRunning}
-                placeholder="개수 입력"
-              />
-            </div>
+            <label>
+              크롤링 개수
+              <label className="custom-toggle">
+                <input
+                  type="checkbox"
+                  checked={unlimitedMode}
+                  onChange={(e) => setUnlimitedMode(e.target.checked)}
+                  disabled={status.isRunning}
+                />
+                <span>전체 크롤링</span>
+              </label>
+            </label>
+            {unlimitedMode ? (
+              <div className="unlimited-info">
+                발견되는 모든 상품을 크롤링합니다. (수만 개, 수 시간 소요 가능)
+              </div>
+            ) : (
+              <div className="limit-presets">
+                {CRAWL_LIMIT_PRESETS.filter(p => p.value > 0).map(preset => (
+                  <button
+                    key={preset.value}
+                    className={`preset-btn ${crawlLimit === preset.value ? 'active' : ''}`}
+                    onClick={() => setCrawlLimit(preset.value)}
+                    disabled={status.isRunning}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+                <input
+                  type="number"
+                  min="1"
+                  value={crawlLimit}
+                  onChange={(e) => setCrawlLimit(Math.max(1, parseInt(e.target.value) || 1))}
+                  disabled={status.isRunning}
+                  placeholder="직접 입력"
+                  className="limit-custom-input"
+                />
+              </div>
+            )}
+          </div>
+          
+          <div className="control-group">
+            <label>URL 수집 방식</label>
+            <select
+              value={urlSource}
+              onChange={(e) => setUrlSource(e.target.value)}
+              disabled={status.isRunning}
+              className="source-select"
+            >
+              {URL_SOURCE_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <span className="source-desc">
+              {URL_SOURCE_OPTIONS.find(o => o.value === urlSource)?.desc}
+            </span>
           </div>
           
           <div className="control-group category-group">
@@ -197,7 +272,7 @@ const AdminCrawler = () => {
                 value={customCategory}
                 onChange={(e) => setCustomCategory(e.target.value)}
                 disabled={status.isRunning}
-                placeholder="예: 남성 > 지갑 > 프라다"
+                placeholder="예: 남성 > 가방 > 고야드 > 크로스&숄더백"
               />
             ) : (
               <select
@@ -211,6 +286,47 @@ const AdminCrawler = () => {
                 ))}
               </select>
             )}
+          </div>
+
+          <div className="control-group speed-group">
+            <label>속도 설정</label>
+            <div className="speed-options">
+              <div className="speed-toggle-row">
+                <button
+                  className={`preset-btn ${speedMode === 'normal' ? 'active' : ''}`}
+                  onClick={() => setSpeedMode('normal')}
+                  disabled={status.isRunning}
+                >
+                  일반 모드
+                </button>
+                <button
+                  className={`preset-btn speed-fast ${speedMode === 'fast' ? 'active' : ''}`}
+                  onClick={() => setSpeedMode('fast')}
+                  disabled={status.isRunning}
+                >
+                  ⚡ 고속 모드
+                </button>
+              </div>
+              <span className="source-desc">
+                {speedMode === 'fast' 
+                  ? '워커 15개, 배치 60개로 최대 속도 (서버 부하 증가)' 
+                  : '워커 10개, 배치 40개로 안정적 크롤링'}
+              </span>
+              <label className="custom-toggle s3-toggle">
+                <input
+                  type="checkbox"
+                  checked={skipS3}
+                  onChange={(e) => setSkipS3(e.target.checked)}
+                  disabled={status.isRunning}
+                />
+                <span>S3 업로드 스킵 (원본 이미지 URL 사용)</span>
+              </label>
+              <span className="source-desc">
+                {skipS3 
+                  ? '이미지를 S3에 복사하지 않고 원본 URL을 그대로 사용합니다. 크롤링 속도 3~5배 향상' 
+                  : '이미지를 S3에 업로드하여 자체 서버에서 제공합니다.'}
+              </span>
+            </div>
           </div>
         </div>
         
@@ -250,15 +366,20 @@ const AdminCrawler = () => {
               {status.isRunning ? '진행 중' : '완료'}
             </span>
             <span className="progress-count">
-              {status.savedCount} / {status.targetCount}개 저장됨
+              {isUnlimitedTarget 
+                ? `${status.savedCount.toLocaleString()}개 저장됨 (전체 크롤링)`
+                : `${status.savedCount.toLocaleString()} / ${status.targetCount.toLocaleString()}개 저장됨`
+              }
             </span>
           </div>
-          <div className="progress-bar">
-            <div 
-              className="progress-fill"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
+          {!isUnlimitedTarget && (
+            <div className="progress-bar">
+              <div 
+                className="progress-fill"
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
+          )}
           <div className="progress-time">
             {status.startTime && (
               <span>시작: {new Date(status.startTime).toLocaleString()}</span>

@@ -56,12 +56,34 @@ const Products = () => {
 		return categoryTree.find(cat => cat.slug === deriveMain);
 	}, [categoryTree, deriveMain]);
 
-	// 현재 중분류의 하위 카테고리(소분류) 찾기
+	// 현재 중분류의 하위 카테고리(소분류/브랜드) 찾기
 	const currentDepth3Categories = useMemo(() => {
 		if (!currentMainCategory || !selectedDepth2) return [];
 		const depth2Cat = currentMainCategory.children?.find(c => c.slug === selectedDepth2);
 		return depth2Cat?.children || [];
 	}, [currentMainCategory, selectedDepth2]);
+
+	// 현재 선택된 3뎁스(브랜드)의 slug과 4뎁스(세부 카테고리) 찾기
+	const { selectedDepth3Slug, currentDepth4Categories } = useMemo(() => {
+		if (!currentDepth3Categories || currentDepth3Categories.length === 0 || !category) {
+			return { selectedDepth3Slug: null, currentDepth4Categories: [] };
+		}
+
+		// 현재 category URL이 어떤 depth3 카테고리에 속하는지 확인
+		// 정확히 일치하거나, depth3 slug으로 시작하는 경우 (depth4 선택 상태)
+		const matchedDepth3 = currentDepth3Categories.find(d3 =>
+			category === d3.slug || category.startsWith(d3.slug + '-')
+		);
+
+		if (!matchedDepth3) {
+			return { selectedDepth3Slug: null, currentDepth4Categories: [] };
+		}
+
+		return {
+			selectedDepth3Slug: matchedDepth3.slug,
+			currentDepth4Categories: matchedDepth3.children || []
+		};
+	}, [currentDepth3Categories, category]);
 
 	const bannerByMain = {
 		bags:
@@ -355,20 +377,125 @@ const Products = () => {
 		return () => clearInterval(timer);
 	}, [bestSlides.length]);
 
+	const isSearchMode = !!search;
+	const [searchInput, setSearchInput] = useState(search || '');
+	const [searchCategoryFilter, setSearchCategoryFilter] = useState(category || '');
+
+	// 검색어 변경 시 input 동기화
+	useEffect(() => {
+		setSearchInput(search || '');
+	}, [search]);
+
+	useEffect(() => {
+		setSearchCategoryFilter(category || '');
+	}, [category]);
+
+	// 검색 폼 제출
+	const handleSearchSubmit = (e) => {
+		e.preventDefault();
+		const trimmed = searchInput.trim();
+		if (trimmed) {
+			const params = new URLSearchParams();
+			params.set("search", trimmed);
+			setSearchParams(params);
+		}
+	};
+
+	// 검색 내 카테고리 필터 변경
+	const handleSearchCategoryFilter = (cat) => {
+		const params = new URLSearchParams();
+		params.set("search", search);
+		if (cat) params.set("category", cat);
+		setSearchParams(params);
+	};
+
+	// 검색 결과의 카테고리별 건수 계산
+	const searchCategoryCounts = useMemo(() => {
+		if (!isSearchMode) return {};
+		const total = pagination?.totalCount || sortedProducts.length;
+		return { total };
+	}, [isSearchMode, pagination, sortedProducts.length]);
+
 	return (
 		<div className="products-page">
-			{/* 상단 배너 (PC/모바일 공통) */}
-			<div
-				className="category-banner"
-				style={{ backgroundImage: `url(${bannerByMain[deriveMain] || bannerByMain.men})` }}>
-				<div className="category-banner-overlay" />
-				<div className="category-banner-content">
-					<h1>{bannerTitleMap[deriveMain] || "HIGH-END"}</h1>
-				</div>
-			</div>
+			{/* 검색 모드: 검색 결과 헤더 */}
+			{isSearchMode ? (
+				<div className="search-results-section">
+					{/* 타이틀 */}
+					<h2 className="search-page-title">상품 검색 결과</h2>
 
-			{/* 중분류 카테고리 아이콘 그리드 (PC/모바일 공통) */}
-			{depth2Categories.length > 0 && (
+					<div className="container">
+						{/* 키워드 + 건수 */}
+						<div className="search-result-summary">
+							<strong className="search-result-keyword">{search}</strong>
+							{' '}검색결과
+							<span className="search-result-total">
+								(총 <strong>{searchCategoryCounts.total || 0}</strong> 건)
+							</span>
+						</div>
+
+						{/* 검색 입력창 */}
+						<form className="search-inline-form" onSubmit={handleSearchSubmit}>
+							<input
+								type="text"
+								className="search-inline-input"
+								value={searchInput}
+								onChange={(e) => setSearchInput(e.target.value)}
+								placeholder="검색어를 입력하세요"
+							/>
+							<button type="submit" className="search-inline-btn">
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+									<circle cx="11" cy="11" r="8" />
+									<line x1="21" y1="21" x2="16.65" y2="16.65" />
+								</svg>
+							</button>
+						</form>
+
+						{/* 카테고리 필터 탭 */}
+						<div className="search-category-tabs">
+							<button
+								className={`search-cat-tab ${!searchCategoryFilter ? 'active' : ''}`}
+								onClick={() => handleSearchCategoryFilter('')}
+							>
+								전체
+							</button>
+							<button
+								className={`search-cat-tab ${searchCategoryFilter === 'men' ? 'active' : ''}`}
+								onClick={() => handleSearchCategoryFilter('men')}
+							>
+								남성
+							</button>
+							<button
+								className={`search-cat-tab ${searchCategoryFilter === 'women' ? 'active' : ''}`}
+								onClick={() => handleSearchCategoryFilter('women')}
+							>
+								여성
+							</button>
+							<button
+								className={`search-cat-tab ${searchCategoryFilter === 'domestic' ? 'active' : ''}`}
+								onClick={() => handleSearchCategoryFilter('domestic')}
+							>
+								국내출고 상품
+							</button>
+						</div>
+					</div>
+				</div>
+			) : (
+				<>
+					{/* 상단 배너 (PC/모바일 공통) */}
+					<div
+						className="category-banner"
+						style={{ backgroundImage: `url(${bannerByMain[deriveMain] || bannerByMain.men})` }}>
+						<div className="category-banner-overlay" />
+						<div className="category-banner-content">
+							<h1>{bannerTitleMap[deriveMain] || "HIGH-END"}</h1>
+						</div>
+					</div>
+				</>
+			)}
+
+			{/* 중분류 카테고리 아이콘 그리드 (검색 모드가 아닐 때만) */}
+			{!isSearchMode && depth2Categories.length > 0 && (
 				<div className="products-cat-section">
 					<div className="products-cat-grid">
 						{/* 특별 카테고리일 때 "전체" 버튼 추가 */}
@@ -418,26 +545,57 @@ const Products = () => {
 			)}
 
 			<div className="container">
-				{/* 소분류/브랜드 필터 (표 형태) - 항상 3뎁스(브랜드) 표시 */}
+				{/* 소분류/브랜드 필터 (표 형태) - 3뎁스(브랜드) 표시 */}
 				{selectedDepth2 && (
-					<div className="subcategory-bar">
-						{/* Show All 버튼 */}
-						<button
-							className={`subcategory-btn ${category === selectedDepth2 ? "active" : ""}`}
-							onClick={() => handleCategoryChange(selectedDepth2)}>
-							Show All
-						</button>
-						{/* 소분류(브랜드 등) 목록 */}
-						{currentDepth3Categories.length > 0 && (
-							currentDepth3Categories.map((item) => (
-								<button
-									key={item.slug}
-									className={`subcategory-btn ${category === item.slug ? "active" : ""}`}
-									onClick={() => handleCategoryChange(item.slug)}>
-									{item.name}
-								</button>
-							))
-						) }
+					<div className="category-filter-wrapper">
+						<div className="subcategory-bar">
+							{/* Show All 버튼 */}
+							<button
+								className={`subcategory-btn ${category === selectedDepth2 ? "active" : ""}`}
+								onClick={() => handleCategoryChange(selectedDepth2)}>
+								Show All
+							</button>
+							{/* 소분류(브랜드 등) 목록 */}
+							{currentDepth3Categories.length > 0 && (
+								currentDepth3Categories.map((item) => (
+									<button
+										key={item.slug}
+										className={`subcategory-btn ${
+											category === item.slug || category.startsWith(item.slug + '-') ? "active" : ""
+										}`}
+										onClick={() => handleCategoryChange(item.slug)}>
+										{item.name}
+									</button>
+								))
+							) }
+						</div>
+
+						{/* 세부 카테고리 필터 (4뎁스) - 선택된 브랜드의 하위 카테고리 */}
+						{selectedDepth3Slug && currentDepth4Categories.length > 0 && (
+							<div className="depth4-section">
+								<div className="depth4-label">
+									<span className="depth4-arrow">└</span>
+									<span className="depth4-brand-name">
+										{currentDepth3Categories.find(c => c.slug === selectedDepth3Slug)?.name || ''}
+									</span>
+								</div>
+								<div className="depth4-bar">
+									<button
+										className={`depth4-btn ${category === selectedDepth3Slug ? "active" : ""}`}
+										onClick={() => handleCategoryChange(selectedDepth3Slug)}>
+										전체
+									</button>
+									{currentDepth4Categories.map((item) => (
+										<button
+											key={item.slug}
+											className={`depth4-btn ${category === item.slug ? "active" : ""}`}
+											onClick={() => handleCategoryChange(item.slug)}>
+											{item.name}
+										</button>
+									))}
+								</div>
+							</div>
+						)}
 					</div>
 				)}
 

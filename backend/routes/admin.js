@@ -226,9 +226,14 @@ router.post('/crawl/start', auth, adminAuth, async (req, res) => {
     return res.status(400).json({ message: '크롤링이 이미 진행 중입니다.' });
   }
 
-  const { limit = 20, category = '' } = req.body;
-  const crawlLimit = Math.max(1, parseInt(limit) || 20); // 최소 1개, 상한 없음
+  const { limit = 100, category = '', urlSource = 'both', speedMode = 'normal', skipS3 = false } = req.body;
+  const rawLimit = parseInt(limit);
+  const isUnlimited = rawLimit === 0;
+  const crawlLimit = isUnlimited ? 0 : Math.max(1, rawLimit || 100);
   const categoryFilter = (category || '').trim();
+  const crawlUrlSource = ['sitemap', 'category', 'both'].includes(urlSource) ? urlSource : 'both';
+  const crawlSpeedMode = ['fast', 'normal'].includes(speedMode) ? speedMode : 'normal';
+  const crawlSkipS3 = skipS3 === true ? 'true' : 'false';
 
   // 상태 초기화
   crawlStatus = {
@@ -237,12 +242,17 @@ router.post('/crawl/start', auth, adminAuth, async (req, res) => {
     startTime: new Date().toISOString(),
     endTime: null,
     savedCount: 0,
-    targetCount: crawlLimit,
-    categoryFilter: categoryFilter
+    targetCount: isUnlimited ? 999999 : crawlLimit,
+    categoryFilter: categoryFilter,
+    urlSource: crawlUrlSource
   };
 
   const filterInfo = categoryFilter ? `, 카테고리: "${categoryFilter}"` : '';
-  crawlStatus.logs.push(`[${new Date().toLocaleTimeString()}] 크롤링 시작 (목표: ${crawlLimit}개${filterInfo})`);
+  const sourceInfo = crawlUrlSource === 'both' ? '사이트맵+카테고리' : crawlUrlSource === 'sitemap' ? '사이트맵' : '카테고리';
+  const limitInfo = isUnlimited ? '전체(무제한)' : `${crawlLimit}개`;
+  const speedInfo = crawlSpeedMode === 'fast' ? '⚡고속' : '일반';
+  const s3Info = crawlSkipS3 === 'true' ? ', S3스킵' : '';
+  crawlStatus.logs.push(`[${new Date().toLocaleTimeString()}] 크롤링 시작 (목표: ${limitInfo}${filterInfo}, 소스: ${sourceInfo}, 속도: ${speedInfo}${s3Info})`);
 
   // Python 크롤러 실행
   const crawlerPath = path.join(__dirname, '../../replmoa_crawler.py');
@@ -260,6 +270,9 @@ router.post('/crawl/start', auth, adminAuth, async (req, res) => {
       ...process.env,
       CRAWL_LIMIT: crawlLimit.toString(),
       CRAWL_CATEGORY: categoryFilter,
+      CRAWL_URL_SOURCE: crawlUrlSource,
+      CRAWL_SPEED_MODE: crawlSpeedMode,
+      CRAWL_SKIP_S3: crawlSkipS3,
       CRAWL_STOP_FLAG: stopFlagPath,  // 중지 플래그 경로 전달
       PYTHONIOENCODING: 'utf-8',
       PYTHONUNBUFFERED: '1'

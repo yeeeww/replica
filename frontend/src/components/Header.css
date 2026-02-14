@@ -354,6 +354,13 @@
 	background-color: #333;
 }
 
+.search-hint {
+	text-align: center;
+	color: #999;
+	font-size: 13px;
+	margin-top: 14px;
+}
+
 .search-results {
 	margin-top: 16px;
 	max-height: 420px;
