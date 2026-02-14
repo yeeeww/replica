@@ -170,13 +170,6 @@ const AdminCrawler = () => {
     }
   };
 
-  // 진행률 계산
-  const isUnlimitedTarget = status.targetCount === 0 || status.targetCount >= 999999;
-  const progress = isUnlimitedTarget
-    ? 0
-    : (status.targetCount > 0 
-      ? Math.min(100, Math.round((status.savedCount / status.targetCount) * 100))
-      : 0);
 
   return (
     <div className="admin-crawler">
