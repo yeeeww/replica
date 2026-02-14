@@ -302,8 +302,8 @@ const AdminCrawler = () => {
               </div>
               <span className="source-desc">
                 {speedMode === 'fast' 
-                  ? '워커 5개, 배치 20개 (차단 방지 + 빠른 속도)' 
-                  : '워커 3개, 배치 10개 (차단 방지 - 안정적)'}
+                  ? '워커 10개, 배치 30개 (빠른 속도)' 
+                  : '워커 6개, 배치 20개 (안정적)'}
               </span>
               <label className="custom-toggle s3-toggle">
                 <input
