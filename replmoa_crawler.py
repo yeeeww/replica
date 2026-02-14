@@ -17,22 +17,22 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 # ============================================
-# t3.medium (4GB) 속도 최적화 설정
+# t3.small (2GB) 속도 최적화 설정
 # ============================================
 SPEED_MODE = os.environ.get("CRAWL_SPEED_MODE", "normal")  # "fast" 또는 "normal"
 
 if SPEED_MODE == "fast":
-    MAX_WORKERS = 15         # 동시 처리 워커 수 (I/O 바운드이므로 높여도 OK)
-    BATCH_SIZE = 60          # 배치 크기
-    SLEEP_BETWEEN_BATCH = 0.1  # 배치 간 대기 시간
-    SLEEP_BETWEEN_REQUEST = 0.05  # 요청 간 최소 대기
-    URL_COLLECT_WORKERS = 8   # URL 수집 동시 요청 수
-else:
-    MAX_WORKERS = 10         # 동시 처리 워커 수 (기본도 올림)
+    MAX_WORKERS = 10         # 동시 처리 워커 수 (2GB에서 안전한 최대치)
     BATCH_SIZE = 40          # 배치 크기
+    SLEEP_BETWEEN_BATCH = 0.15  # 배치 간 대기 시간
+    SLEEP_BETWEEN_REQUEST = 0.08  # 요청 간 최소 대기
+    URL_COLLECT_WORKERS = 5   # URL 수집 동시 요청 수
+else:
+    MAX_WORKERS = 7          # 동시 처리 워커 수
+    BATCH_SIZE = 30          # 배치 크기
     SLEEP_BETWEEN_BATCH = 0.3  # 배치 간 대기 시간
     SLEEP_BETWEEN_REQUEST = 0.15  # 요청 간 최소 대기
-    URL_COLLECT_WORKERS = 5   # URL 수집 동시 요청 수
+    URL_COLLECT_WORKERS = 4   # URL 수집 동시 요청 수
 # ============================================
 SKIP_S3_UPLOAD = os.environ.get("CRAWL_SKIP_S3", "false").lower() == "true"
 # ============================================
