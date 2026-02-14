@@ -5,6 +5,14 @@ const pool = require('../config/database');
 const { spawn } = require('child_process');
 const path = require('path');
 
+// 한국 시간 포맷 함수
+function kstTime() {
+  return new Date().toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour12: true });
+}
+function kstDateTime() {
+  return new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+}
+
 // 크롤링 상태 저장 (메모리)
 let crawlStatus = {
   isRunning: false,
@@ -266,7 +274,7 @@ router.post('/crawl/start', auth, adminAuth, async (req, res) => {
   const limitInfo = isUnlimited ? '전체(무제한)' : `${crawlLimit}개`;
   const speedInfo = crawlSpeedMode === 'fast' ? '⚡고속' : '일반';
   const s3Info = crawlSkipS3 === 'true' ? ', S3스킵' : '';
-  crawlStatus.logs.push(`[${new Date().toLocaleTimeString()}] 크롤링 시작 (목표: ${limitInfo}${filterInfo}, 소스: ${sourceInfo}, 속도: ${speedInfo}${s3Info})`);
+  crawlStatus.logs.push(`[${kstTime()}] 크롤링 시작 (목표: ${limitInfo}${filterInfo}, 소스: ${sourceInfo}, 속도: ${speedInfo}${s3Info})`);
 
   // Python 크롤러 실행
   const crawlerPath = path.join(__dirname, '../../replmoa_crawler.py');
@@ -299,7 +307,7 @@ router.post('/crawl/start', auth, adminAuth, async (req, res) => {
   crawlerProcess.stdout.on('data', (data) => {
     const lines = data.toString('utf-8').split('\n').filter(l => l.trim());
     lines.forEach(line => {
-      crawlStatus.logs.push(`[${new Date().toLocaleTimeString()}] ${line}`);
+      crawlStatus.logs.push(`[${kstTime()}] ${line}`);
       
       // ===== 단계 감지 =====
       if (line.includes('[SITEMAP] 사이트맵 불러오는 중')) {
@@ -381,7 +389,7 @@ router.post('/crawl/start', auth, adminAuth, async (req, res) => {
   crawlerProcess.stderr.on('data', (data) => {
     const lines = data.toString('utf-8').split('\n').filter(l => l.trim());
     lines.forEach(line => {
-      crawlStatus.logs.push(`[${new Date().toLocaleTimeString()}] [ERROR] ${line}`);
+      crawlStatus.logs.push(`[${kstTime()}] [ERROR] ${line}`);
     });
   });
 
@@ -391,10 +399,10 @@ router.post('/crawl/start', auth, adminAuth, async (req, res) => {
     crawlerProcess = null;
     
     if (signal === 'SIGTERM' || signal === 'SIGKILL') {
-      crawlStatus.logs.push(`[${new Date().toLocaleTimeString()}] 크롤링 중지됨 - 총 ${crawlStatus.savedCount}개 저장됨`);
+      crawlStatus.logs.push(`[${kstTime()}] 크롤링 중지됨 - 총 ${crawlStatus.savedCount}개 저장됨`);
     } else {
       const status = code === 0 ? '완료' : `오류 (코드: ${code})`;
-      crawlStatus.logs.push(`[${new Date().toLocaleTimeString()}] 크롤링 ${status} - 총 ${crawlStatus.savedCount}개 저장됨`);
+      crawlStatus.logs.push(`[${kstTime()}] 크롤링 ${status} - 총 ${crawlStatus.savedCount}개 저장됨`);
     }
   });
 
@@ -402,12 +410,12 @@ router.post('/crawl/start', auth, adminAuth, async (req, res) => {
     crawlStatus.isRunning = false;
     crawlStatus.endTime = new Date().toISOString();
     crawlerProcess = null;
-    crawlStatus.logs.push(`[${new Date().toLocaleTimeString()}] [ERROR] 크롤러 실행 실패: ${err.message}`);
+    crawlStatus.logs.push(`[${kstTime()}] [ERROR] 크롤러 실행 실패: ${err.message}`);
     console.error('Crawler process error:', err);
   });
 
   // 프로세스 시작 확인 로그
-  crawlStatus.logs.push(`[${new Date().toLocaleTimeString()}] Python 프로세스 시작됨 (PID: ${crawlerProcess.pid || 'N/A'})`);
+  crawlStatus.logs.push(`[${kstTime()}] Python 프로세스 시작됨 (PID: ${crawlerProcess.pid || 'N/A'})`);
 
   res.json({ 
     message: '크롤링이 시작되었습니다.',
@@ -453,7 +461,7 @@ router.post('/crawl/stop', auth, adminAuth, (req, res) => {
       try { fs.unlinkSync(stopFlagPath); } catch(e) {}
     }, 1000);
     
-    crawlStatus.logs.push(`[${new Date().toLocaleTimeString()}] 크롤링 강제 중지됨 (PID: ${pid})`);
+    crawlStatus.logs.push(`[${kstTime()}] 크롤링 강제 중지됨 (PID: ${pid})`);
     
     res.json({ message: '크롤링이 강제 중지되었습니다.' });
   } catch (error) {
@@ -470,7 +478,21 @@ router.get('/crawl/status', auth, adminAuth, (req, res) => {
     startTime: crawlStatus.startTime,
     endTime: crawlStatus.endTime,
     savedCount: crawlStatus.savedCount,
-    targetCount: crawlStatus.targetCount
+    targetCount: crawlStatus.targetCount,
+    // 상세 진행 상태
+    phase: crawlStatus.phase || 'init',
+    sitemapCount: crawlStatus.sitemapCount || 0,
+    categoryUrlCount: crawlStatus.categoryUrlCount || 0,
+    totalUrls: crawlStatus.totalUrls || 0,
+    scannedCount: crawlStatus.scannedCount || 0,
+    skipCount: crawlStatus.skipCount || 0,
+    failCount: crawlStatus.failCount || 0,
+    timeoutCount: crawlStatus.timeoutCount || 0,
+    retryCount: crawlStatus.retryCount || 0,
+    categoryUrlDone: crawlStatus.categoryUrlDone || false,
+    elapsedStr: crawlStatus.elapsedStr || '',
+    remainStr: crawlStatus.remainStr || '',
+    successRate: crawlStatus.successRate || 0,
   });
 });
 

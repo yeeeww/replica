@@ -446,10 +446,10 @@ const AdminCrawler = () => {
 
           <div className="progress-time">
             {status.startTime && (
-              <span>시작: {new Date(status.startTime).toLocaleString()}</span>
+              <span>시작: {new Date(status.startTime).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}</span>
             )}
             {status.endTime && (
-              <span>종료: {new Date(status.endTime).toLocaleString()}</span>
+              <span>종료: {new Date(status.endTime).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}</span>
             )}
           </div>
         </div>
