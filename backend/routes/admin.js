@@ -244,7 +244,21 @@ router.post('/crawl/start', auth, adminAuth, async (req, res) => {
     savedCount: 0,
     targetCount: isUnlimited ? 999999 : crawlLimit,
     categoryFilter: categoryFilter,
-    urlSource: crawlUrlSource
+    urlSource: crawlUrlSource,
+    // 상세 진행 상태
+    phase: 'init',  // init, sitemap, category_url, crawling, retry, done
+    sitemapCount: 0,
+    categoryUrlCount: 0,
+    totalUrls: 0,
+    scannedCount: 0,
+    skipCount: 0,
+    failCount: 0,
+    timeoutCount: 0,
+    retryCount: 0,
+    categoryUrlDone: false,
+    elapsedStr: '',
+    remainStr: '',
+    successRate: 0,
   };
 
   const filterInfo = categoryFilter ? `, 카테고리: "${categoryFilter}"` : '';
@@ -286,10 +300,77 @@ router.post('/crawl/start', auth, adminAuth, async (req, res) => {
     const lines = data.toString('utf-8').split('\n').filter(l => l.trim());
     lines.forEach(line => {
       crawlStatus.logs.push(`[${new Date().toLocaleTimeString()}] ${line}`);
-      // 저장 성공 카운트
-      if (line.includes('[OK] 저장:')) {
+      
+      // ===== 단계 감지 =====
+      if (line.includes('[SITEMAP] 사이트맵 불러오는 중')) {
+        crawlStatus.phase = 'sitemap';
+      }
+      else if (line.includes('[SITEMAP] 사이트맵에서')) {
+        const m = line.match(/(\d+)개의 상품 URL/);
+        if (m) crawlStatus.sitemapCount = parseInt(m[1]);
+      }
+      else if (line.includes('[CATEGORY]') && line.includes('병렬 페이지 순회 시작')) {
+        crawlStatus.phase = 'category_url';
+      }
+      else if (line.includes('[CATEGORY]') && line.includes('누적') && line.includes('수집 중')) {
+        const m = line.match(/누적 (\d+)개/);
+        if (m) crawlStatus.categoryUrlCount = parseInt(m[1]);
+      }
+      else if (line.includes('[CATEGORY-BG] 카테고리에서 신규')) {
+        const m = line.match(/신규 (\d+)개/);
+        if (m) crawlStatus.categoryUrlCount = parseInt(m[1]);
+        crawlStatus.categoryUrlDone = true;
+      }
+      else if (line.includes('[SCAN] 병렬 크롤링 시작')) {
+        crawlStatus.phase = 'crawling';
+      }
+      else if (line.includes('[RETRY]') && line.includes('재시도 시작')) {
+        crawlStatus.phase = 'retry';
+        const m = line.match(/(\d+)개 URL/);
+        if (m) crawlStatus.retryCount = parseInt(m[1]);
+      }
+      
+      // ===== 저장 성공 카운트 =====
+      if (line.match(/\[\+\d+\]/)) {
         crawlStatus.savedCount++;
       }
+      
+      // ===== 진행률 파싱 =====
+      if (line.includes('진행:') && line.includes('스캔')) {
+        // "진행: 1,800/41,742 (4.3%) | 경과: 3시간 20분 | 남은: ~74시간"
+        const scanMatch = line.match(/진행:\s*([\d,]+)\/([\d,]+)/);
+        if (scanMatch) {
+          crawlStatus.scannedCount = parseInt(scanMatch[1].replace(/,/g, ''));
+          crawlStatus.totalUrls = parseInt(scanMatch[2].replace(/,/g, ''));
+        }
+        const savedMatch = line.match(/저장:\s*([\d,]+)개/);
+        if (savedMatch) {
+          crawlStatus.savedCount = parseInt(savedMatch[1].replace(/,/g, ''));
+        }
+        const skipMatch = line.match(/스킵:\s*([\d,]+)/);
+        if (skipMatch) crawlStatus.skipCount = parseInt(skipMatch[1].replace(/,/g, ''));
+        const failMatch = line.match(/실패:\s*([\d,]+)/);
+        if (failMatch) crawlStatus.failCount = parseInt(failMatch[1].replace(/,/g, ''));
+        const timeoutMatch = line.match(/타임아웃:\s*([\d,]+)/);
+        if (timeoutMatch) crawlStatus.timeoutCount = parseInt(timeoutMatch[1].replace(/,/g, ''));
+        const elapsedMatch = line.match(/경과:\s*([^\|]+)/);
+        if (elapsedMatch) crawlStatus.elapsedStr = elapsedMatch[1].trim();
+        const remainMatch = line.match(/남은:\s*([^\|]+)/);
+        if (remainMatch) crawlStatus.remainStr = remainMatch[1].trim();
+        const rateMatch = line.match(/성공률:\s*([\d.]+)%/);
+        if (rateMatch) crawlStatus.successRate = parseFloat(rateMatch[1]);
+      }
+      
+      // ===== 타임아웃 카운트 (개별) =====
+      if (line.includes('[TIMEOUT]')) {
+        crawlStatus.timeoutCount++;
+      }
+      
+      // ===== 완료 감지 =====
+      if (line.includes('크롤링 완료!')) {
+        crawlStatus.phase = 'done';
+      }
+      
       // 로그 최대 500줄 유지
       if (crawlStatus.logs.length > 500) {
         crawlStatus.logs = crawlStatus.logs.slice(-500);

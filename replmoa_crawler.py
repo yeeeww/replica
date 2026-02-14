@@ -22,17 +22,17 @@ from psycopg2.extras import RealDictCursor
 SPEED_MODE = os.environ.get("CRAWL_SPEED_MODE", "normal")  # "fast" 또는 "normal"
 
 if SPEED_MODE == "fast":
-    MAX_WORKERS = 10         # 동시 처리 워커 수 (2GB에서 안전한 최대치)
-    BATCH_SIZE = 40          # 배치 크기
-    SLEEP_BETWEEN_BATCH = 0.15  # 배치 간 대기 시간
-    SLEEP_BETWEEN_REQUEST = 0.08  # 요청 간 최소 대기
-    URL_COLLECT_WORKERS = 5   # URL 수집 동시 요청 수
+    MAX_WORKERS = 5          # 동시 처리 워커 수 (차단 방지)
+    BATCH_SIZE = 20          # 배치 크기
+    SLEEP_BETWEEN_BATCH = 1.0  # 배치 간 대기 시간
+    SLEEP_BETWEEN_REQUEST = 0.5  # 요청 간 최소 대기
+    URL_COLLECT_WORKERS = 3   # URL 수집 동시 요청 수
 else:
-    MAX_WORKERS = 7          # 동시 처리 워커 수
-    BATCH_SIZE = 30          # 배치 크기
-    SLEEP_BETWEEN_BATCH = 0.3  # 배치 간 대기 시간
-    SLEEP_BETWEEN_REQUEST = 0.15  # 요청 간 최소 대기
-    URL_COLLECT_WORKERS = 4   # URL 수집 동시 요청 수
+    MAX_WORKERS = 3          # 동시 처리 워커 수 (차단 방지 - 보수적)
+    BATCH_SIZE = 10          # 배치 크기
+    SLEEP_BETWEEN_BATCH = 2.0  # 배치 간 대기 시간 (넉넉하게)
+    SLEEP_BETWEEN_REQUEST = 1.0  # 요청 간 최소 대기
+    URL_COLLECT_WORKERS = 2   # URL 수집 동시 요청 수
 # ============================================
 SKIP_S3_UPLOAD = os.environ.get("CRAWL_SKIP_S3", "false").lower() == "true"
 # ============================================
@@ -182,12 +182,19 @@ def upload_images_batch_to_s3(image_urls: List[str], prefix: str = "crawled") ->
 
 # 설정
 SITEMAP_URL = "https://replmoa1.com/sitemap3.xml"
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.2088.76",
+]
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/91.0.4472.124 Safari/537.36"
-    )
+    "User-Agent": random.choice(USER_AGENTS),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
 }
 
 # HTTP Session (연결 재사용 → TCP handshake 절약, 속도 2~3배 향상)
@@ -718,7 +725,9 @@ def parse_product_options(soup: BeautifulSoup) -> List[Dict[str, any]]:
 def parse_product_detail(url: str, upload_to_s3: bool = True) -> Optional[Dict[str, any]]:
     """개별 상품 페이지에서 정보를 추출합니다."""
     try:
-        response = http_session.get(url, timeout=15)
+        # 랜덤 지연 (차단 방지)
+        time.sleep(random.uniform(0.3, 1.5))
+        response = http_session.get(url, timeout=20)
         if response.status_code != 200:
             return None
 
@@ -843,7 +852,15 @@ def parse_product_detail(url: str, upload_to_s3: bool = True) -> Optional[Dict[s
         }
 
     except Exception as exc:
-        print(f"파싱 에러 ({url}): {exc}")
+        # 타임아웃은 짧게, 나머지는 상세히
+        exc_str = str(exc)
+        if "timed out" in exc_str.lower() or "max retries" in exc_str.lower():
+            import re as _re
+            m = _re.search(r"it_id=(\d+)", url)
+            it_id = m.group(1) if m else url[-20:]
+            print(f"  [TIMEOUT] it_id={it_id}")
+        else:
+            print(f"  [ERROR] ({url[:50]}): {exc_str[:80]}")
         return None
 
 
@@ -1081,7 +1098,10 @@ def main() -> None:
 
     count = 0
     scanned = 0
-    retry_urls = []  # 타임아웃/에러 발생한 URL (나중에 재시도)
+    skip_count = 0      # 중복 스킵
+    fail_count = 0      # 파싱 실패
+    timeout_count = 0   # 타임아웃
+    retry_urls = []     # 타임아웃/에러 발생한 URL (나중에 재시도)
     
     def save_product_to_db(info):
         nonlocal count
@@ -1210,14 +1230,21 @@ def main() -> None:
                     save_product_to_db(info)
                     if count >= MAX_SAVE:
                         break
-                elif error and ("timed out" in str(error).lower() or "max retries" in str(error).lower()):
-                    retry_urls.append(url)
+                elif error:
+                    error_str = str(error).lower()
+                    if "timed out" in error_str or "max retries" in error_str:
+                        timeout_count += 1
+                        retry_urls.append(url)
+                    elif "이미 수집" in str(error):
+                        skip_count += 1
+                    else:
+                        fail_count += 1
         
         url_index += len(batch)
         batch_idx += 1
         
-        # 진행률 표시 (5배치마다 = 더 자주)
-        if batch_idx % 5 == 0:
+        # 진행률 표시 (3배치마다)
+        if batch_idx % 3 == 0:
             elapsed = time.time() - start_time
             rate = scanned / elapsed if elapsed > 0 else 0
             save_rate = count / elapsed if elapsed > 0 else 0
@@ -1226,22 +1253,28 @@ def main() -> None:
             remaining_urls = total_known - scanned
             remaining_sec = remaining_urls / rate if rate > 0 else 0
             
-            # 시간 포맷 (시간/분/초)
+            # 시간 포맷
             elapsed_m, elapsed_s = divmod(int(elapsed), 60)
             elapsed_h, elapsed_m = divmod(elapsed_m, 60)
             remain_m, remain_s = divmod(int(remaining_sec), 60)
             remain_h, remain_m = divmod(remain_m, 60)
             
             elapsed_str = f"{elapsed_h}시간 {elapsed_m}분" if elapsed_h > 0 else f"{elapsed_m}분 {elapsed_s}초"
-            remain_str = f"{remain_h}시간 {remain_m}분" if remain_h > 0 else f"{remain_m}분 {remain_s}초"
+            remain_str = f"~{remain_h}시간 {remain_m}분" if remain_h > 0 else f"~{remain_m}분 {remain_s}초"
             
             pct = scanned / total_known * 100 if total_known > 0 else 0
-            print(f"[📊 진행] {scanned:,}/{total_known:,} 스캔 ({pct:.1f}%) | "
-                  f"저장: {count:,}개 ({save_rate:.1f}개/초) | "
-                  f"경과: {elapsed_str} | 남은시간: {remain_str} | "
-                  f"카테고리URL: {cat_status}")
+            success_rate = count / scanned * 100 if scanned > 0 else 0
+            timeout_rate = timeout_count / scanned * 100 if scanned > 0 else 0
             
-            if batch_idx % 20 == 0:
+            print(f"")
+            print(f"  ────────────────────────────────────────")
+            print(f"  진행: {scanned:,}/{total_known:,} ({pct:.1f}%) | 경과: {elapsed_str} | 남은: {remain_str}")
+            print(f"  저장: {count:,}개 ({save_rate:.2f}/초) | 스킵: {skip_count:,} | 실패: {fail_count:,} | 타임아웃: {timeout_count:,} ({timeout_rate:.0f}%)")
+            print(f"  성공률: {success_rate:.1f}% | 재시도 대기: {len(retry_urls):,}개 | 카테고리URL: {cat_status}")
+            print(f"  ────────────────────────────────────────")
+            print(f"")
+            
+            if batch_idx % 15 == 0:
                 gc.collect()
         
         time.sleep(SLEEP_BETWEEN_BATCH)
@@ -1290,13 +1323,20 @@ def main() -> None:
     et_h, et_m = divmod(et_m, 60)
     time_str = f"{et_h}시간 {et_m}분 {et_s}초" if et_h > 0 else f"{et_m}분 {et_s}초"
     avg_speed = f"{scanned/elapsed_total:.1f}개/초" if elapsed_total > 0 else "N/A"
-    save_speed = f"{count/elapsed_total:.1f}개/초" if elapsed_total > 0 else "N/A"
+    save_speed = f"{count/elapsed_total:.2f}개/초" if elapsed_total > 0 else "N/A"
+    success_rate = count / scanned * 100 if scanned > 0 else 0
     print(f"\n{'='*50}")
     print(f"  크롤링 완료!")
-    print(f"  총 스캔: {scanned:,}개 | 저장: {count:,}개")
-    print(f"  총 URL: {len(urls):,}개")
-    print(f"  소요 시간: {time_str}")
-    print(f"  스캔 속도: {avg_speed} | 저장 속도: {save_speed}")
+    print(f"{'='*50}")
+    print(f"  총 URL:     {len(urls):,}개")
+    print(f"  총 스캔:     {scanned:,}개")
+    print(f"  저장 성공:   {count:,}개 ({success_rate:.1f}%)")
+    print(f"  중복 스킵:   {skip_count:,}개")
+    print(f"  파싱 실패:   {fail_count:,}개")
+    print(f"  타임아웃:    {timeout_count:,}개 (재시도 후 최종 실패: {len(retry_urls):,}개)")
+    print(f"  소요 시간:   {time_str}")
+    print(f"  스캔 속도:   {avg_speed}")
+    print(f"  저장 속도:   {save_speed}")
     print(f"{'='*50}")
     
     cur.close()

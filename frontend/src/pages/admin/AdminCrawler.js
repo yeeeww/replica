@@ -309,8 +309,8 @@ const AdminCrawler = () => {
               </div>
               <span className="source-desc">
                 {speedMode === 'fast' 
-                  ? '워커 10개, 배치 40개로 빠른 크롤링 (서버 부하 증가)' 
-                  : '워커 7개, 배치 30개로 안정적 크롤링'}
+                  ? '워커 5개, 배치 20개 (차단 방지 + 빠른 속도)' 
+                  : '워커 3개, 배치 10개 (차단 방지 - 안정적)'}
               </span>
               <label className="custom-toggle s3-toggle">
                 <input
@@ -361,25 +361,96 @@ const AdminCrawler = () => {
       {/* 진행 상태 */}
       {(status.isRunning || status.savedCount > 0) && (
         <div className="crawler-progress">
-          <div className="progress-info">
-            <span className="progress-label">
-              {status.isRunning ? '진행 중' : '완료'}
-            </span>
-            <span className="progress-count">
-              {isUnlimitedTarget 
-                ? `${status.savedCount.toLocaleString()}개 저장됨 (전체 크롤링)`
-                : `${status.savedCount.toLocaleString()} / ${status.targetCount.toLocaleString()}개 저장됨`
-              }
-            </span>
+          {/* 단계 표시 */}
+          <div className="phase-steps">
+            {[
+              { key: 'init', label: '초기화' },
+              { key: 'sitemap', label: '사이트맵 수집' },
+              { key: 'category_url', label: '카테고리 URL 수집' },
+              { key: 'crawling', label: '상품 크롤링' },
+              { key: 'retry', label: '재시도' },
+              { key: 'done', label: '완료' },
+            ].map((step, idx) => {
+              const phaseOrder = ['init', 'sitemap', 'category_url', 'crawling', 'retry', 'done'];
+              const currentIdx = phaseOrder.indexOf(status.phase || 'init');
+              const stepIdx = phaseOrder.indexOf(step.key);
+              const isActive = step.key === status.phase;
+              const isDone = stepIdx < currentIdx;
+              return (
+                <div key={step.key} className={`phase-step ${isActive ? 'active' : ''} ${isDone ? 'done' : ''}`}>
+                  <div className="phase-dot">{isDone ? '✓' : idx + 1}</div>
+                  <span className="phase-label">{step.label}</span>
+                </div>
+              );
+            })}
           </div>
-          {!isUnlimitedTarget && (
-            <div className="progress-bar">
-              <div 
-                className="progress-fill"
-                style={{ width: `${progress}%` }}
-              ></div>
+
+          {/* 상세 통계 */}
+          <div className="crawl-stats">
+            <div className="stat-row">
+              <div className="stat-item">
+                <span className="stat-label">사이트맵 URL</span>
+                <span className="stat-value">{(status.sitemapCount || 0).toLocaleString()}개</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">카테고리 URL</span>
+                <span className="stat-value">
+                  {(status.categoryUrlCount || 0).toLocaleString()}개
+                  {status.categoryUrlDone ? ' ✓' : status.phase === 'category_url' || status.phase === 'crawling' ? ' (수집 중...)' : ''}
+                </span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">총 URL</span>
+                <span className="stat-value">{(status.totalUrls || 0).toLocaleString()}개</span>
+              </div>
+            </div>
+            <div className="stat-row">
+              <div className="stat-item primary">
+                <span className="stat-label">저장 성공</span>
+                <span className="stat-value">{(status.savedCount || 0).toLocaleString()}개</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">스캔 완료</span>
+                <span className="stat-value">{(status.scannedCount || 0).toLocaleString()}개</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">성공률</span>
+                <span className="stat-value">{(status.successRate || 0).toFixed(1)}%</span>
+              </div>
+            </div>
+            <div className="stat-row">
+              <div className="stat-item">
+                <span className="stat-label">중복 스킵</span>
+                <span className="stat-value">{(status.skipCount || 0).toLocaleString()}</span>
+              </div>
+              <div className="stat-item warn">
+                <span className="stat-label">타임아웃</span>
+                <span className="stat-value">{(status.timeoutCount || 0).toLocaleString()}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">파싱 실패</span>
+                <span className="stat-value">{(status.failCount || 0).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 진행 바 */}
+          {status.totalUrls > 0 && (
+            <div className="progress-detail">
+              <div className="progress-bar">
+                <div 
+                  className="progress-fill"
+                  style={{ width: `${Math.min(100, (status.scannedCount / status.totalUrls) * 100)}%` }}
+                ></div>
+              </div>
+              <div className="progress-meta">
+                <span>{status.totalUrls > 0 ? `${((status.scannedCount / status.totalUrls) * 100).toFixed(1)}%` : '0%'}</span>
+                <span>{status.elapsedStr ? `경과: ${status.elapsedStr}` : ''}</span>
+                <span>{status.remainStr ? `남은: ${status.remainStr}` : ''}</span>
+              </div>
             </div>
           )}
+
           <div className="progress-time">
             {status.startTime && (
               <span>시작: {new Date(status.startTime).toLocaleString()}</span>
@@ -404,7 +475,15 @@ const AdminCrawler = () => {
             status.logs.map((log, idx) => (
               <div 
                 key={idx} 
-                className={`log-line ${log.includes('[ERROR]') ? 'error' : ''} ${log.includes('[OK]') ? 'success' : ''} ${log.includes('[SKIP]') ? 'skip' : ''}`}
+                className={`log-line ${
+                  log.includes('[ERROR]') || log.includes('[TIMEOUT]') ? 'error' : ''
+                } ${
+                  log.includes('[+') ? 'success' : ''
+                } ${
+                  log.includes('────') || log.includes('진행:') || log.includes('저장:') || log.includes('성공률:') ? 'progress' : ''
+                } ${
+                  log.includes('[SITEMAP]') || log.includes('[CATEGORY]') || log.includes('[COLLECT]') || log.includes('[CONFIG]') ? 'info' : ''
+                }`}
               >
                 {log}
               </div>
