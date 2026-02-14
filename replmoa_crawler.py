@@ -1081,6 +1081,7 @@ def main() -> None:
 
     count = 0
     scanned = 0
+    retry_urls = []  # 타임아웃/에러 발생한 URL (나중에 재시도)
     
     def save_product_to_db(info):
         nonlocal count
@@ -1209,6 +1210,8 @@ def main() -> None:
                     save_product_to_db(info)
                     if count >= MAX_SAVE:
                         break
+                elif error and ("timed out" in str(error).lower() or "max retries" in str(error).lower()):
+                    retry_urls.append(url)
         
         url_index += len(batch)
         batch_idx += 1
@@ -1245,6 +1248,42 @@ def main() -> None:
     
     # 카테고리 수집 스레드 종료 대기
     cat_thread.join(timeout=5)
+    
+    # ============================================
+    # 실패한 URL 재시도 (최대 2회)
+    # ============================================
+    if retry_urls and not check_stop_flag() and count < MAX_SAVE:
+        print(f"\n[RETRY] 타임아웃/에러 {len(retry_urls)}개 URL 재시도 시작...")
+        retry_round = 0
+        while retry_urls and retry_round < 2 and not check_stop_flag() and count < MAX_SAVE:
+            retry_round += 1
+            current_retry = list(retry_urls)
+            retry_urls.clear()
+            print(f"[RETRY] {retry_round}차 재시도: {len(current_retry)}개")
+            
+            for i in range(0, len(current_retry), BATCH_SIZE):
+                if check_stop_flag() or count >= MAX_SAVE:
+                    break
+                batch = current_retry[i:i+BATCH_SIZE]
+                
+                with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                    futures = {
+                        executor.submit(fetch_and_filter, (0, url)): url
+                        for url in batch
+                    }
+                    for future in as_completed(futures):
+                        info, idx, url, error = future.result()
+                        if info:
+                            save_product_to_db(info)
+                        elif error and ("timed out" in str(error).lower() or "max retries" in str(error).lower()):
+                            retry_urls.append(url)
+                
+                time.sleep(SLEEP_BETWEEN_BATCH * 2)  # 재시도는 좀 더 여유 있게
+            
+            print(f"[RETRY] {retry_round}차 완료 (남은 실패: {len(retry_urls)}개)")
+        
+        if retry_urls:
+            print(f"[RETRY] 최종 실패: {len(retry_urls)}개 (삭제/비공개 상품일 가능성)")
     
     elapsed_total = time.time() - start_time
     et_m, et_s = divmod(int(elapsed_total), 60)
