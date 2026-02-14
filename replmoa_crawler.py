@@ -1124,7 +1124,8 @@ def main() -> None:
         count += 1
         sale = info.get("판매가격") or "가격 없음"
         opt_info = f", 옵션 {option_count}개" if option_count else ""
-        print(f"  [OK] 저장 ({count}/{MAX_SAVE}): {info['상품명'][:30]} ({sale}{opt_info})")
+        cat_short = (info.get("카테고리") or "")[:20]
+        print(f"  [+{count}] {info['상품명'][:35]} | {sale} | {cat_short}{opt_info}")
         
         # 저장 성공 시 it_id 캐시에 추가 (같은 세션 중복 방지)
         import re as _re
@@ -1212,16 +1213,33 @@ def main() -> None:
         url_index += len(batch)
         batch_idx += 1
         
-        # 진행률 표시 (10배치마다)
-        if batch_idx % 10 == 0:
+        # 진행률 표시 (5배치마다 = 더 자주)
+        if batch_idx % 5 == 0:
             elapsed = time.time() - start_time
             rate = scanned / elapsed if elapsed > 0 else 0
+            save_rate = count / elapsed if elapsed > 0 else 0
             total_known = len(urls)
             cat_status = "수집 중" if not category_collect_done.is_set() else "완료"
-            remaining = (total_known - scanned) / rate / 3600 if rate > 0 else 0
-            print(f"[PROGRESS] {scanned}/{total_known} 스캔 ({scanned/total_known*100:.1f}%), "
-                  f"{count}개 저장, 속도: {rate:.1f}/s, 카테고리: {cat_status}, 예상: {remaining:.1f}h")
-            gc.collect()
+            remaining_urls = total_known - scanned
+            remaining_sec = remaining_urls / rate if rate > 0 else 0
+            
+            # 시간 포맷 (시간/분/초)
+            elapsed_m, elapsed_s = divmod(int(elapsed), 60)
+            elapsed_h, elapsed_m = divmod(elapsed_m, 60)
+            remain_m, remain_s = divmod(int(remaining_sec), 60)
+            remain_h, remain_m = divmod(remain_m, 60)
+            
+            elapsed_str = f"{elapsed_h}시간 {elapsed_m}분" if elapsed_h > 0 else f"{elapsed_m}분 {elapsed_s}초"
+            remain_str = f"{remain_h}시간 {remain_m}분" if remain_h > 0 else f"{remain_m}분 {remain_s}초"
+            
+            pct = scanned / total_known * 100 if total_known > 0 else 0
+            print(f"[📊 진행] {scanned:,}/{total_known:,} 스캔 ({pct:.1f}%) | "
+                  f"저장: {count:,}개 ({save_rate:.1f}개/초) | "
+                  f"경과: {elapsed_str} | 남은시간: {remain_str} | "
+                  f"카테고리URL: {cat_status}")
+            
+            if batch_idx % 20 == 0:
+                gc.collect()
         
         time.sleep(SLEEP_BETWEEN_BATCH)
     
@@ -1229,12 +1247,18 @@ def main() -> None:
     cat_thread.join(timeout=5)
     
     elapsed_total = time.time() - start_time
-    print(f"\n[COMPLETE] 완료!")
-    print(f"  - 총 스캔: {scanned}개")
-    print(f"  - 저장: {count}개")
-    print(f"  - 총 URL: {len(urls)}개")
-    print(f"  - 소요 시간: {elapsed_total/3600:.2f}시간 ({elapsed_total/60:.1f}분)")
-    print(f"  - 평균 속도: {scanned/elapsed_total:.1f}개/초" if elapsed_total > 0 else "")
+    et_m, et_s = divmod(int(elapsed_total), 60)
+    et_h, et_m = divmod(et_m, 60)
+    time_str = f"{et_h}시간 {et_m}분 {et_s}초" if et_h > 0 else f"{et_m}분 {et_s}초"
+    avg_speed = f"{scanned/elapsed_total:.1f}개/초" if elapsed_total > 0 else "N/A"
+    save_speed = f"{count/elapsed_total:.1f}개/초" if elapsed_total > 0 else "N/A"
+    print(f"\n{'='*50}")
+    print(f"  크롤링 완료!")
+    print(f"  총 스캔: {scanned:,}개 | 저장: {count:,}개")
+    print(f"  총 URL: {len(urls):,}개")
+    print(f"  소요 시간: {time_str}")
+    print(f"  스캔 속도: {avg_speed} | 저장 속도: {save_speed}")
+    print(f"{'='*50}")
     
     cur.close()
     conn.close()
