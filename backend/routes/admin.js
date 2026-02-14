@@ -322,7 +322,18 @@ router.post('/crawl/start', auth, adminAuth, async (req, res) => {
       }
       else if (line.includes('[CATEGORY]') && line.includes('누적') && line.includes('수집 중')) {
         const m = line.match(/누적 (\d+)개/);
-        if (m) crawlStatus.categoryUrlCount = parseInt(m[1]);
+        if (m) {
+          // 카테고리별 누적이 아닌 전체 누적으로 추가
+          const catCount = parseInt(m[1]);
+          if (catCount > (crawlStatus._currentCatCount || 0)) {
+            crawlStatus.categoryUrlCount += catCount - (crawlStatus._currentCatCount || 0);
+          }
+          crawlStatus._currentCatCount = catCount;
+        }
+      }
+      else if (line.includes('[CATEGORY]') && line.includes('상품 URL 수집 완료')) {
+        // 카테고리 하나 완료 → 다음 카테고리용 리셋
+        crawlStatus._currentCatCount = 0;
       }
       else if (line.includes('[CATEGORY-BG] 카테고리에서 신규')) {
         const m = line.match(/신규 (\d+)개/);
