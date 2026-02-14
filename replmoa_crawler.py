@@ -848,18 +848,70 @@ def parse_product_detail(url: str, upload_to_s3: bool = True) -> Optional[Dict[s
 
 
 def main() -> None:
-    # 1. URL 수집
-    urls = get_product_urls()
+    import threading
+    from collections import deque
 
-    if not urls:
-        print("상품 URL을 찾지 못해 종료합니다.")
-        return
-
-    print(f"크롤링 시작 (총 {len(urls)}개 후보)...")
     speed_label = "⚡ 고속" if SPEED_MODE == "fast" else "일반"
     s3_label = "스킵 (원본 URL 사용)" if SKIP_S3_UPLOAD else "활성화"
     print(f"[CONFIG] 모드: {speed_label}, 워커: {MAX_WORKERS}, 배치: {BATCH_SIZE}, 대기: {SLEEP_BETWEEN_BATCH}s")
     print(f"[CONFIG] S3 업로드: {s3_label}, URL 수집 병렬: {URL_COLLECT_WORKERS}페이지")
+
+    # ============================================
+    # 1단계: 사이트맵 URL 빠르게 수집 (즉시 처리 시작용)
+    # ============================================
+    source = URL_SOURCE.lower().strip()
+    seen_urls = set()
+    urls = []
+
+    if source in ("sitemap", "both"):
+        sitemap_urls = get_product_urls_from_sitemap()
+        for url in sitemap_urls:
+            clean = url.strip()
+            if clean and clean not in seen_urls:
+                seen_urls.add(clean)
+                urls.append(clean)
+        print(f"[COLLECT] 사이트맵에서 {len(urls)}개 수집 → 즉시 처리 시작!")
+    
+    # 카테고리 URL을 백그라운드에서 수집하여 큐에 추가
+    category_url_queue = deque()
+    category_collect_done = threading.Event()
+    
+    def background_category_collect():
+        """백그라운드에서 카테고리 URL을 수집하여 큐에 넣는 스레드"""
+        if source not in ("category", "both"):
+            category_collect_done.set()
+            return
+        
+        print("[CATEGORY-BG] 백그라운드 카테고리 URL 수집 시작...")
+        cat_urls = get_product_urls_from_categories(CATEGORY_FILTER)
+        new_count = 0
+        for url in cat_urls:
+            clean = url.strip()
+            if clean and clean not in seen_urls:
+                seen_urls.add(clean)
+                category_url_queue.append(clean)
+                new_count += 1
+        print(f"[CATEGORY-BG] 카테고리에서 신규 {new_count}개 추가 완료")
+        category_collect_done.set()
+    
+    # 백그라운드 스레드 시작
+    cat_thread = threading.Thread(target=background_category_collect, daemon=True)
+    cat_thread.start()
+
+    if not urls and source == "category":
+        # 카테고리 전용 모드: 첫 배치가 올 때까지 잠시 대기
+        print("[COLLECT] 카테고리 URL 수집 대기 중...")
+        while len(category_url_queue) == 0 and not category_collect_done.is_set():
+            time.sleep(1)
+        urls = list(category_url_queue)
+        category_url_queue.clear()
+    
+    if not urls and category_collect_done.is_set():
+        print("상품 URL을 찾지 못해 종료합니다.")
+        return
+
+    random.shuffle(urls)
+    print(f"크롤링 시작 (초기 {len(urls)}개 + 카테고리 추가 수집 중)...")
 
     # 2. DB 연결
     if not DB_CONFIG["password"]:
@@ -1083,16 +1135,18 @@ def main() -> None:
         return True
 
     # ============================================
-    # 병렬 처리 (필터 유무 관계없이 동일하게 적용)
+    # 병렬 처리 (사이트맵 즉시 처리 + 카테고리 백그라운드 수집)
     # ============================================
     if SKIP_S3_UPLOAD:
         print(f"[S3] S3 업로드 스킵 모드 - 원본 이미지 URL을 그대로 사용합니다.")
     print(f"[SCAN] 병렬 크롤링 시작 (워커 {MAX_WORKERS}개, 배치 {BATCH_SIZE}개)...")
+    print(f"[SCAN] 사이트맵 URL 즉시 처리 시작, 카테고리 URL은 백그라운드 수집 중...")
     
-    url_batches = [urls[i:i+BATCH_SIZE] for i in range(0, len(urls), BATCH_SIZE)]
     start_time = time.time()
+    batch_idx = 0
+    url_index = 0  # 현재 처리 위치
     
-    for batch_idx, batch in enumerate(url_batches):
+    while True:
         # 중지 요청 확인
         if check_stop_flag():
             print(f"[STOP] 중지됨 - {count}개 저장 완료")
@@ -1100,6 +1154,41 @@ def main() -> None:
         if count >= MAX_SAVE:
             print(f"[DONE] 목표 {MAX_SAVE}개 달성!")
             break
+        
+        # 카테고리 큐에서 새 URL 가져오기
+        new_urls_added = 0
+        while category_url_queue:
+            try:
+                new_url = category_url_queue.popleft()
+                urls.append(new_url)
+                new_urls_added += 1
+            except IndexError:
+                break
+        if new_urls_added > 0 and new_urls_added >= 100:
+            print(f"[QUEUE] 카테고리에서 {new_urls_added}개 URL 추가 (총 {len(urls)}개)")
+        
+        # 처리할 URL이 없고, 카테고리 수집도 끝났으면 종료
+        if url_index >= len(urls):
+            if category_collect_done.is_set():
+                # 마지막으로 큐 비우기
+                while category_url_queue:
+                    try:
+                        urls.append(category_url_queue.popleft())
+                    except IndexError:
+                        break
+                if url_index >= len(urls):
+                    print(f"[DONE] 모든 URL 처리 완료!")
+                    break
+            else:
+                # 카테고리 수집 중이면 잠시 대기
+                time.sleep(1)
+                continue
+        
+        # 현재 배치 추출
+        batch = urls[url_index:url_index + BATCH_SIZE]
+        if not batch:
+            time.sleep(0.5)
+            continue
         
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             futures = {
@@ -1120,23 +1209,32 @@ def main() -> None:
                     if count >= MAX_SAVE:
                         break
         
+        url_index += len(batch)
+        batch_idx += 1
+        
         # 진행률 표시 (10배치마다)
         if batch_idx % 10 == 0:
             elapsed = time.time() - start_time
             rate = scanned / elapsed if elapsed > 0 else 0
-            remaining = (len(urls) - scanned) / rate / 3600 if rate > 0 else 0
-            print(f"[PROGRESS] {scanned}/{len(urls)} 스캔 ({scanned/len(urls)*100:.1f}%), "
-                  f"{count}개 저장, 속도: {rate:.1f}/s, 예상 남은 시간: {remaining:.1f}h")
+            total_known = len(urls)
+            cat_status = "수집 중" if not category_collect_done.is_set() else "완료"
+            remaining = (total_known - scanned) / rate / 3600 if rate > 0 else 0
+            print(f"[PROGRESS] {scanned}/{total_known} 스캔 ({scanned/total_known*100:.1f}%), "
+                  f"{count}개 저장, 속도: {rate:.1f}/s, 카테고리: {cat_status}, 예상: {remaining:.1f}h")
             gc.collect()
         
         time.sleep(SLEEP_BETWEEN_BATCH)
+    
+    # 카테고리 수집 스레드 종료 대기
+    cat_thread.join(timeout=5)
     
     elapsed_total = time.time() - start_time
     print(f"\n[COMPLETE] 완료!")
     print(f"  - 총 스캔: {scanned}개")
     print(f"  - 저장: {count}개")
+    print(f"  - 총 URL: {len(urls)}개")
     print(f"  - 소요 시간: {elapsed_total/3600:.2f}시간 ({elapsed_total/60:.1f}분)")
-    print(f"  - 평균 속도: {scanned/elapsed_total:.1f}개/초")
+    print(f"  - 평균 속도: {scanned/elapsed_total:.1f}개/초" if elapsed_total > 0 else "")
     
     cur.close()
     conn.close()
